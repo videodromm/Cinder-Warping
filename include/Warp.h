@@ -27,6 +27,7 @@
 #include "cinder/Matrix.h"
 #include "cinder/Rect.h"
 #include "cinder/Vector.h"
+#include "cinder/Json.h"
 
 #include "cinder/gl/gl.h"
 
@@ -37,6 +38,7 @@
 
 namespace cinder {
 class XmlTree;
+class JsonTree;
 
 namespace app {
 class KeyEvent;
@@ -95,7 +97,10 @@ class Warp : public std::enable_shared_from_this<Warp> {
 	virtual ci::XmlTree toXml() const;
 	//!
 	virtual void fromXml( const ci::XmlTree &xml );
-
+	//! to json
+	virtual ci::JsonTree toJson() const;
+	//! from json
+	virtual void fromJson(const ci::JsonTree &json);
 	//! get the width of the content in pixels
 	int getWidth() const { return mWidth; };
 	//! get the height of the content in pixels
@@ -211,6 +216,11 @@ class Warp : public std::enable_shared_from_this<Warp> {
 	//! write a settings xml file
 	static void writeSettings( const WarpList &warps, const ci::DataTargetRef &target );
 
+	//! read a settings json file and pass back a vector of Warps
+	static WarpList load(const ci::DataSourceRef &source);
+	//! write a settings json file
+	static void save(const WarpList &warps, const ci::DataTargetRef &target);
+
 	//! handles mouseMove events for multiple warps
 	static bool handleMouseMove( WarpList &warps, ci::app::MouseEvent &event );
 	//! handles mouseDown events for multiple warps
@@ -320,6 +330,11 @@ class WarpBilinear : public Warp {
 	virtual ci::XmlTree toXml() const override;
 	//!
 	virtual void fromXml( const ci::XmlTree &xml ) override;
+
+	//! to json
+	virtual ci::JsonTree toJson() const override;
+	//! from json
+	virtual void fromJson(const ci::JsonTree &json) override;
 
 	//! set the width and height of the content in pixels
 	void setSize( int w, int h ) override
@@ -490,6 +505,12 @@ class WarpPerspectiveBilinear : public WarpBilinear {
 	ci::XmlTree toXml() const override;
 	//!
 	void fromXml( const ci::XmlTree &xml ) override;
+
+	//! to json
+	virtual ci::JsonTree toJson() const override;
+	//! from json
+	virtual void fromJson(const ci::JsonTree &json) override;
+
 	void mouseMove( ci::app::MouseEvent &event ) override;
 	void mouseDown( ci::app::MouseEvent &event ) override;
 	void mouseDrag( ci::app::MouseEvent &event ) override;
