@@ -29,6 +29,7 @@
 #include "cinder/Vector.h"
 #include "cinder/Json.h"
 #include "cinder/Log.h"
+#include "cinder/Timeline.h"
 
 #include "cinder/gl/gl.h"
 
@@ -102,6 +103,21 @@ class Warp : public std::enable_shared_from_this<Warp> {
 	virtual ci::JsonTree toJson() const;
 	//! from json
 	virtual void fromJson(const ci::JsonTree &json);
+	unsigned int					getAFboIndex() { return mAFboIndex; };
+	unsigned int					getBFboIndex() { return mBFboIndex; };
+	unsigned int					getAShaderIndex() { return mAShaderIndex; };
+	unsigned int					getBShaderIndex() { return mBShaderIndex; };
+	//float							getABCrossfade() { return mABCrossfade; };
+	//Anim<float>						ABCrossfade;	// from 0 A to 1 B can be automated via timeline
+	unsigned int					getMixFboIndex() { return mMixFboIndex; };
+	std::string						getName() { return mName; };
+	void							setAFboIndex(unsigned int aFboIndex) { mAFboIndex = aFboIndex; };
+	void							setBFboIndex(unsigned int aFboIndex) { mBFboIndex = aFboIndex; };
+	void							setAShaderIndex(unsigned int aShaderIndex) { mAShaderIndex = aShaderIndex; };
+	void							setBShaderIndex(unsigned int aShaderIndex) { mBShaderIndex = aShaderIndex; };
+	//void							setABCrossfade(float aABCrossfade) { mABCrossfade = aABCrossfade; };
+	void							setMixFboIndex(unsigned int aMixFboIndex) { mMixFboIndex = aMixFboIndex; };
+	void							setName(std::string aName) { mName = aName; };
 	//! get the width of the content in pixels
 	int getWidth() const { return mWidth; };
 	//! get the height of the content in pixels
@@ -266,6 +282,12 @@ class Warp : public std::enable_shared_from_this<Warp> {
 	ci::vec2 mWindowSize;
 	float    mBrightness;
 	unsigned mSelected;
+	unsigned int					mAFboIndex;
+	unsigned int					mAShaderIndex;	// index of the shader used by the fbo A
+	unsigned int					mBFboIndex;		// index of the fbo B
+	unsigned int					mBShaderIndex;	// index of the shader used by the fbo B
+	unsigned int					mMixFboIndex;	// index of the fbo mixing A and B
+	std::string						mName;			// name of the warp
 
 	//! Determines the number of horizontal and vertical control points
 	int mControlsX;
