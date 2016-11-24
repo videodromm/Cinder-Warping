@@ -71,7 +71,26 @@ void WarpBilinear::fromXml( const XmlTree &xml )
 	mIsLinear = xml.getAttributeValue<bool>( "linear", false );
 	mIsAdaptive = xml.getAttributeValue<bool>( "adaptive", false );
 }
+//! to json
+JsonTree	WarpBilinear::toJson() const
+{
+	JsonTree		json = Warp::toJson();
+	// add attributes specific to this type of warp
+	json.addChild(ci::JsonTree("resolution", mResolution));
+	json.addChild(ci::JsonTree("linear", mIsLinear));
+	json.addChild(ci::JsonTree("adaptive", mIsAdaptive));
 
+	return json;
+}
+//! from json
+void WarpBilinear::fromJson(const JsonTree &json)
+{
+	Warp::fromJson(json);
+	// retrieve attributes specific to this type of warp
+	mResolution = (json.hasChild("resolution")) ? json.getValueForKey<int>("resolution") : 16;
+	mIsLinear = (json.hasChild("linear")) ? json.getValueForKey<bool>("linear") : false;
+	mIsAdaptive = (json.hasChild("adaptive")) ? json.getValueForKey<bool>("adaptive") : false; 
+}
 void WarpBilinear::reset()
 {
 	mPoints.clear();
