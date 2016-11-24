@@ -77,16 +77,21 @@ void WarpPerspectiveBilinear::fromXml( const XmlTree &xml )
 JsonTree	WarpPerspectiveBilinear::toJson() const
 {
 	JsonTree		json = WarpBilinear::toJson();
-	// set corners
-	for (unsigned i = 0; i < 4; ++i) {
-		vec2 corner = mWarp->getControlPoint(i);
+	if (json.hasChild("warp")) {
+		JsonTree warp(json.getChild("warp"));
+		// set corners
+		JsonTree	corners = JsonTree::makeArray("corners");
+		for (unsigned i = 0; i < 4; ++i) {
+			vec2 corner = mWarp->getControlPoint(i);
+			JsonTree	cr;
+			cr.addChild(ci::JsonTree("corner", i));
+			cr.addChild(ci::JsonTree("x", corner.x));
+			cr.addChild(ci::JsonTree("y", corner.y));
 
-		JsonTree cp;
-		cp.addChild(ci::JsonTree("corner", i));
-		cp.addChild(ci::JsonTree("x", corner.x));
-		cp.addChild(ci::JsonTree("y", corner.y));
-
-		json.pushBack(cp);
+			corners.pushBack(cr);
+		}
+		warp.pushBack(corners);
+		json.pushBack(warp);
 	}
 	return json;
 }
@@ -94,13 +99,16 @@ JsonTree	WarpPerspectiveBilinear::toJson() const
 void WarpPerspectiveBilinear::fromJson(const JsonTree &json)
 {
 	Warp::fromJson(json);
-	// get corners
-	JsonTree cps(json.getChild("corner"));
-	for (size_t i = 0; i < cps.getNumChildren(); i++) {
-		JsonTree child = cps.getChild(i);
-		float x = (child.hasChild("x")) ? child.getValueForKey<float>("x") : 0.0f;
-		float y = (child.hasChild("y")) ? child.getValueForKey<float>("y") : 0.0f;
-		mWarp->setControlPoint(i, vec2(x, y));
+	if (json.hasChild("warp")) {
+		JsonTree warp(json.getChild("warp"));
+		// get corners
+		JsonTree corners(warp.getChild("corners"));
+		for (size_t i = 0; i < corners.getNumChildren(); i++) {
+			JsonTree child = corners.getChild(i);
+			float x = (child.hasChild("x")) ? child.getValueForKey<float>("x") : 0.0f;
+			float y = (child.hasChild("y")) ? child.getValueForKey<float>("y") : 0.0f;
+			mWarp->setControlPoint(i, vec2(x, y));
+		}
 	}
 }
 void WarpPerspectiveBilinear::draw( bool controls )

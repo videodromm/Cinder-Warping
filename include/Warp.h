@@ -28,6 +28,7 @@
 #include "cinder/Rect.h"
 #include "cinder/Vector.h"
 #include "cinder/Json.h"
+#include "cinder/Log.h"
 
 #include "cinder/gl/gl.h"
 

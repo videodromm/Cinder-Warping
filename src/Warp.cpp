@@ -276,6 +276,8 @@ namespace ph {
 					JsonTree child = cps.getChild(i);
 					float x = (child.hasChild("x")) ? child.getValueForKey<float>("x") : 0.0f;
 					float y = (child.hasChild("y")) ? child.getValueForKey<float>("y") : 0.0f;
+					CI_LOG_V("controlpoint:" + toString(x) + " " + toString(y));
+
 					mPoints.push_back(vec2(x, y));
 				}
 			}
@@ -468,31 +470,41 @@ namespace ph {
 		WarpList Warp::load(const DataSourceRef &source)
 		{
 			WarpList	warps;
-			JsonTree doc(source);
+			JsonTree json(source);
 
 			// try to load the specified json file
-			if (doc.hasChild("warps")) {
+			if (json.hasChild("warps")) {
+				JsonTree ws(json.getChild("warps"));
 
 				// iterate warps
-				for (size_t i = 0; i < doc.getNumChildren(); i++) {
-					JsonTree warpJson = doc.getChild(i);
-					// create warp of the correct type
-					std::string method = (warpJson.hasChild("method")) ? warpJson.getValueForKey<std::string>("method") : "unknown";
-					if (method == "bilinear") {
-						WarpBilinearRef warp(new WarpBilinear());
-						warp->fromJson(warpJson);
-						warps.push_back(warp);
+				for (size_t i = 0; i < ws.getNumChildren(); i++) {
+					JsonTree child(ws.getChild(i));
+
+					if (child.hasChild("warp")) {
+						JsonTree w(child.getChild("warp"));
+						// create warp of the correct type
+						std::string method = (w.hasChild("method")) ? w.getValueForKey<std::string>("method") : "unknown";
+						if (child.hasChild("afboindex")) {
+							// TODO
+						}
+						if (method == "bilinear") {
+							WarpBilinearRef warp(new WarpBilinear());
+							warp->fromJson(child);
+							warps.push_back(warp);
+						}
+						else if (method == "perspective") {
+							WarpPerspectiveRef warp(new WarpPerspective());
+							warp->fromJson(child);
+							warps.push_back(warp);
+						}
+						else if (method == "perspectivebilinear") {
+							WarpPerspectiveBilinearRef warp(new WarpPerspectiveBilinear());
+							warp->fromJson(child);
+							warps.push_back(warp);
+						}
 					}
-					else if (method == "perspective") {
-						WarpPerspectiveRef warp(new WarpPerspective());
-						warp->fromJson(warpJson);
-						warps.push_back(warp);
-					}
-					else if (method == "perspectivebilinear") {
-						WarpPerspectiveBilinearRef warp(new WarpPerspectiveBilinear());
-						warp->fromJson(warpJson);
-						warps.push_back(warp);
-					}
+
+
 				}
 
 			}
@@ -501,9 +513,10 @@ namespace ph {
 
 		void Warp::save(const WarpList &warps, const DataTargetRef &target)
 		{
+			JsonTree		json;
 			// create warps json
 			JsonTree warpsJson = JsonTree::makeArray("warps");
-
+			//warpsJson.addChild(ci::JsonTree("warps", "unknown"));
 			// 
 			for (unsigned i = 0; i < warps.size(); ++i) {
 				// create warp
@@ -515,7 +528,9 @@ namespace ph {
 
 			}
 			// write file
-			warpsJson.write(target);
+			json.pushBack(warpsJson);
+
+			json.write(target);
 		}
 
 		bool Warp::handleMouseMove(WarpList &warps, MouseEvent &event)
