@@ -108,6 +108,7 @@ void WarpPerspectiveBilinear::fromJson(const JsonTree &json)
 			float x = (child.hasChild("x")) ? child.getValueForKey<float>("x") : 0.0f;
 			float y = (child.hasChild("y")) ? child.getValueForKey<float>("y") : 0.0f;
 			mWarp->setControlPoint(i, vec2(x, y));
+			CI_LOG_V("corner:" + toString(x) + " " + toString(y));
 		}
 	}
 }
