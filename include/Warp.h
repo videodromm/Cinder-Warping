@@ -29,7 +29,7 @@
 #include "cinder/Vector.h"
 #include "cinder/Json.h"
 #include "cinder/Log.h"
-#include "cinder/Timeline.h"
+#include "cinder/Tween.h"
 
 #include "cinder/gl/gl.h"
 
@@ -108,7 +108,7 @@ class Warp : public std::enable_shared_from_this<Warp> {
 	unsigned int					getAShaderIndex() { return mAShaderIndex; };
 	unsigned int					getBShaderIndex() { return mBShaderIndex; };
 	//float							getABCrossfade() { return mABCrossfade; };
-	//Anim<float>						ABCrossfade;	// from 0 A to 1 B can be automated via timeline
+	ci::Anim<float>					ABCrossfade;	// from 0 A to 1 B can be automated via timeline
 	unsigned int					getMixFboIndex() { return mMixFboIndex; };
 	std::string						getName() { return mName; };
 	void							setAFboIndex(unsigned int aFboIndex) { mAFboIndex = aFboIndex; };
