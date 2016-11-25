@@ -244,6 +244,12 @@ namespace ph {
 			warp.addChild(ci::JsonTree("width", mControlsX));
 			warp.addChild(ci::JsonTree("height", mControlsY));
 			warp.addChild(ci::JsonTree("brightness", mBrightness));
+			warp.addChild(ci::JsonTree("afboindex", mAFboIndex));
+			warp.addChild(ci::JsonTree("bfboindex", mBFboIndex));
+			warp.addChild(ci::JsonTree("ashaderindex", mAShaderIndex));
+			warp.addChild(ci::JsonTree("bshaderindex", mBShaderIndex));
+			warp.addChild(ci::JsonTree("mixfboindex", mMixFboIndex));
+			warp.addChild(ci::JsonTree("crossfade", ABCrossfade));
 
 			// add <controlpoint> tags (column-major)
 			JsonTree	cps = JsonTree::makeArray("controlpoints");
@@ -269,6 +275,13 @@ namespace ph {
 				mControlsX = (warp.hasChild("width")) ? warp.getValueForKey<int>("width") : 2;
 				mControlsY = (warp.hasChild("height")) ? warp.getValueForKey<int>("height") : 2;
 				mBrightness = (warp.hasChild("brightness")) ? warp.getValueForKey<float>("brightness") : 1.0f;
+				mAFboIndex = (warp.hasChild("afboindex")) ? warp.getValueForKey<int>("afboindex") : 1;
+				mBFboIndex = (warp.hasChild("bfboindex")) ? warp.getValueForKey<int>("bfboindex") : 2;
+				mAShaderIndex = (warp.hasChild("ashaderindex")) ? warp.getValueForKey<int>("ashaderindex") : 1;
+				mBShaderIndex = (warp.hasChild("bshaderindex")) ? warp.getValueForKey<int>("bshaderindex") : 2;
+				mMixFboIndex = (warp.hasChild("mixfboindex")) ? warp.getValueForKey<int>("mixfboindex") : 0;
+				ABCrossfade = (warp.hasChild("crossfade")) ? warp.getValueForKey<float>("crossfade") : 1.0f;
+
 				// load control points
 				mPoints.clear();
 				JsonTree cps(warp.getChild("controlpoints"));
