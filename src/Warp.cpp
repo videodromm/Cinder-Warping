@@ -248,7 +248,7 @@ namespace ph {
 			warp.addChild(ci::JsonTree("bfboindex", mBFboIndex));
 			warp.addChild(ci::JsonTree("ashaderindex", mAShaderIndex));
 			warp.addChild(ci::JsonTree("bshaderindex", mBShaderIndex));
-			warp.addChild(ci::JsonTree("ashaderfilename", mAShaderFilename));
+			warp.addChild(ci::JsonTree("ashaderfilename", mAShaderFilename)); 
 			warp.addChild(ci::JsonTree("bshaderfilename", mBShaderFilename));
 			warp.addChild(ci::JsonTree("mixfboindex", mMixFboIndex));
 			warp.addChild(ci::JsonTree("crossfade", ABCrossfade));
