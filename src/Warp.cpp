@@ -248,6 +248,8 @@ namespace ph {
 			warp.addChild(ci::JsonTree("bfboindex", mBFboIndex));
 			warp.addChild(ci::JsonTree("ashaderindex", mAShaderIndex));
 			warp.addChild(ci::JsonTree("bshaderindex", mBShaderIndex));
+			warp.addChild(ci::JsonTree("ashaderfilename", mAShaderFilename));
+			warp.addChild(ci::JsonTree("bshaderfilename", mBShaderFilename));
 			warp.addChild(ci::JsonTree("mixfboindex", mMixFboIndex));
 			warp.addChild(ci::JsonTree("crossfade", ABCrossfade));
 
@@ -279,6 +281,8 @@ namespace ph {
 				mBFboIndex = (warp.hasChild("bfboindex")) ? warp.getValueForKey<int>("bfboindex") : 2;
 				mAShaderIndex = (warp.hasChild("ashaderindex")) ? warp.getValueForKey<int>("ashaderindex") : 1;
 				mBShaderIndex = (warp.hasChild("bshaderindex")) ? warp.getValueForKey<int>("bshaderindex") : 2;
+				mAShaderFilename = (warp.hasChild("ashaderfilename")) ? warp.getValueForKey<std::string>("ashaderfilename") : "0.frag";
+				mBShaderFilename = (warp.hasChild("bshaderfilename")) ? warp.getValueForKey<std::string>("bshaderfilename") : "0.frag";
 				mMixFboIndex = (warp.hasChild("mixfboindex")) ? warp.getValueForKey<int>("mixfboindex") : 0;
 				ABCrossfade = (warp.hasChild("crossfade")) ? warp.getValueForKey<float>("crossfade") : 1.0f;
 

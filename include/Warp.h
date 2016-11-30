@@ -107,6 +107,8 @@ class Warp : public std::enable_shared_from_this<Warp> {
 	unsigned int					getBFboIndex() { return mBFboIndex; };
 	unsigned int					getAShaderIndex() { return mAShaderIndex; };
 	unsigned int					getBShaderIndex() { return mBShaderIndex; };
+	std::string						getAShaderFilename() { return mAShaderFilename; };
+	std::string						getBShaderFilename() { return mBShaderFilename; };
 	//float							getABCrossfade() { return mABCrossfade; };
 	ci::Anim<float>					ABCrossfade;	// from 0 A to 1 B can be automated via timeline
 	unsigned int					getMixFboIndex() { return mMixFboIndex; };
@@ -115,6 +117,8 @@ class Warp : public std::enable_shared_from_this<Warp> {
 	void							setBFboIndex(unsigned int aFboIndex) { mBFboIndex = aFboIndex; };
 	void							setAShaderIndex(unsigned int aShaderIndex) { mAShaderIndex = aShaderIndex; };
 	void							setBShaderIndex(unsigned int aShaderIndex) { mBShaderIndex = aShaderIndex; };
+	void							setAShaderFilename(std::string aShaderFilename) { mAShaderFilename = aShaderFilename; };
+	void							setBShaderFilename(std::string aShaderFilename) { mBShaderFilename = aShaderFilename; };
 	//void							setABCrossfade(float aABCrossfade) { mABCrossfade = aABCrossfade; };
 	void							setMixFboIndex(unsigned int aMixFboIndex) { mMixFboIndex = aMixFboIndex; };
 	void							setName(std::string aName) { mName = aName; };
@@ -283,12 +287,14 @@ class Warp : public std::enable_shared_from_this<Warp> {
 	float    mBrightness;
 	unsigned mSelected;
 	unsigned int					mAFboIndex;
-	unsigned int					mAShaderIndex;	// index of the shader used by the fbo A
-	unsigned int					mBFboIndex;		// index of the fbo B
-	unsigned int					mBShaderIndex;	// index of the shader used by the fbo B
-	unsigned int					mMixFboIndex;	// index of the fbo mixing A and B
-	std::string						mName;			// name of the warp
-
+	unsigned int					mAShaderIndex;		// index of the shader used by the fbo A
+	unsigned int					mBFboIndex;			// index of the fbo B
+	unsigned int					mBShaderIndex;		// index of the shader used by the fbo B
+	unsigned int					mMixFboIndex;		// index of the fbo mixing A and B
+	std::string						mName;				// name of the warp
+	std::string						mAShaderFilename;	// file name of the A shader
+	std::string						mBShaderFilename;	// file name of the B shader
+														
 	//! Determines the number of horizontal and vertical control points
 	int mControlsX;
 	int mControlsY;
