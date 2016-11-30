@@ -117,7 +117,7 @@ class Warp : public std::enable_shared_from_this<Warp> {
 	void							setBFboIndex(unsigned int aFboIndex) { mBFboIndex = aFboIndex; };
 	void							setAShaderIndex(unsigned int aShaderIndex) { mAShaderIndex = aShaderIndex; };
 	void							setBShaderIndex(unsigned int aShaderIndex) { mBShaderIndex = aShaderIndex; };
-	void							setAShaderFilename(std::string aShaderFilename) { mAShaderFilename = aShaderFilename; };
+	void							setAShaderFilename(std::string aShaderFilename) { mAShaderFilename = aShaderFilename; }; 
 	void							setBShaderFilename(std::string aShaderFilename) { mBShaderFilename = aShaderFilename; };
 	//void							setABCrossfade(float aABCrossfade) { mABCrossfade = aABCrossfade; };
 	void							setMixFboIndex(unsigned int aMixFboIndex) { mMixFboIndex = aMixFboIndex; };
