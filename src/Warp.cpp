@@ -252,6 +252,7 @@ namespace ph {
 			warp.addChild(ci::JsonTree("bshaderfilename", mBShaderFilename));
 			warp.addChild(ci::JsonTree("mixfboindex", mMixFboIndex));
 			warp.addChild(ci::JsonTree("crossfade", ABCrossfade));
+			warp.addChild(ci::JsonTree("active", mActive));
 
 			// add <controlpoint> tags (column-major)
 			JsonTree	cps = JsonTree::makeArray("controlpoints");
@@ -285,7 +286,8 @@ namespace ph {
 				mBShaderFilename = (warp.hasChild("bshaderfilename")) ? warp.getValueForKey<std::string>("bshaderfilename") : "0.frag";
 				mMixFboIndex = (warp.hasChild("mixfboindex")) ? warp.getValueForKey<int>("mixfboindex") : 0;
 				ABCrossfade = (warp.hasChild("crossfade")) ? warp.getValueForKey<float>("crossfade") : 1.0f;
-
+				mActive = (warp.hasChild("active")) ? warp.getValueForKey<float>("active") : true;
+				mDeleted = false; // if we load it, we don't delete it!
 				// load control points
 				mPoints.clear();
 				JsonTree cps(warp.getChild("controlpoints"));
@@ -536,17 +538,17 @@ namespace ph {
 			//warpsJson.addChild(ci::JsonTree("warps", "unknown"));
 			// 
 			for (unsigned i = 0; i < warps.size(); ++i) {
-				// create warp
-				JsonTree	warp(warps[i]->toJson());
-				warp.addChild(ci::JsonTree("id", i + 1));
+				if (!warps[i]->isDeleted()) {
+					// create warp
+					JsonTree	warp(warps[i]->toJson());
+					warp.addChild(ci::JsonTree("id", i + 1));
 
-				// create <warp>
-				warpsJson.pushBack(warp);
-
+					// create <warp>
+					warpsJson.pushBack(warp);
+				}
 			}
 			// write file
 			json.pushBack(warpsJson);
-
 			json.write(target);
 		}
 

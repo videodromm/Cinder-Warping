@@ -113,6 +113,10 @@ class Warp : public std::enable_shared_from_this<Warp> {
 	ci::Anim<float>					ABCrossfade;	// from 0 A to 1 B can be automated via timeline
 	unsigned int					getMixFboIndex() { return mMixFboIndex; };
 	std::string						getName() { return mName; };
+	bool							isActive() { return mActive; };
+	bool							isDeleted() { return mDeleted; };
+	void							toggleWarpActive() { mActive = !mActive; };
+	void							toggleDeleteWarp() { mDeleted = !mDeleted; };
 	void							setAFboIndex(unsigned int aFboIndex) { mAFboIndex = aFboIndex; };
 	void							setBFboIndex(unsigned int aFboIndex) { mBFboIndex = aFboIndex; }; 
 	void							setAShaderIndex(unsigned int aShaderIndex) { mAShaderIndex = aShaderIndex; };
@@ -294,7 +298,8 @@ class Warp : public std::enable_shared_from_this<Warp> {
 	std::string						mName;				// name of the warp
 	std::string						mAShaderFilename;	// file name of the A shader
 	std::string						mBShaderFilename;	// file name of the B shader
-														
+	bool							mActive;			// active
+	bool							mDeleted;			// to be deleted
 	//! Determines the number of horizontal and vertical control points
 	int mControlsX;
 	int mControlsY;
