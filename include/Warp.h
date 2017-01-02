@@ -114,8 +114,8 @@ class Warp : public std::enable_shared_from_this<Warp> {
 	unsigned int					getMixFboIndex() { return mMixFboIndex; };
 	std::string						getName() { return mName; };
 	bool							isActive() { return mActive; };
-	bool							isDeleted() { return mDeleted; };
 	void							toggleWarpActive() { mActive = !mActive; };
+	bool							isDeleted() { return mDeleted; };
 	void							toggleDeleteWarp() { mDeleted = !mDeleted; };
 	void							setAFboIndex(unsigned int aFboIndex) { mAFboIndex = aFboIndex; };
 	void							setBFboIndex(unsigned int aFboIndex) { mBFboIndex = aFboIndex; }; 
