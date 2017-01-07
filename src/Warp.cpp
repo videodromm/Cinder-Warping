@@ -248,7 +248,7 @@ namespace ph {
 			warp.addChild(ci::JsonTree("bfboindex", mBFboIndex));
 			warp.addChild(ci::JsonTree("ashaderindex", mAShaderIndex));
 			warp.addChild(ci::JsonTree("bshaderindex", mBShaderIndex));
-			warp.addChild(ci::JsonTree("ashaderfilename", mAShaderFilename)); 
+			warp.addChild(ci::JsonTree("ashaderfilename", mAShaderFilename));
 			warp.addChild(ci::JsonTree("bshaderfilename", mBShaderFilename));
 			warp.addChild(ci::JsonTree("mixfboindex", mMixFboIndex));
 			warp.addChild(ci::JsonTree("crossfade", ABCrossfade));
@@ -379,12 +379,14 @@ namespace ph {
 
 			// find warp and distance to closest control point
 			for (WarpConstReverseIter itr = warps.rbegin(); itr != warps.rend(); ++itr) {
-				i = (*itr)->findControlPoint(position, &d);
+				if ((*itr)->isActive()) {
+					i = (*itr)->findControlPoint(position, &d);
 
-				if (d < distance) {
-					distance = d;
-					index = i;
-					warp = *itr;
+					if (d < distance ) {
+						distance = d;
+						index = i;
+						warp = *itr;
+					}
 				}
 			}
 
@@ -489,67 +491,80 @@ namespace ph {
 		WarpList Warp::load(const DataSourceRef &source)
 		{
 			WarpList	warps;
-			JsonTree json(source);
+			try {
+				JsonTree json(source);
 
-			// try to load the specified json file
-			if (json.hasChild("warps")) {
-				JsonTree ws(json.getChild("warps"));
+				// try to load the specified json file
+				if (json.hasChild("warps")) {
+					JsonTree ws(json.getChild("warps"));
 
-				// iterate warps
-				for (size_t i = 0; i < ws.getNumChildren(); i++) {
-					JsonTree child(ws.getChild(i));
+					// iterate warps
+					for (size_t i = 0; i < ws.getNumChildren(); i++) {
+						JsonTree child(ws.getChild(i));
 
-					if (child.hasChild("warp")) {
-						JsonTree w(child.getChild("warp"));
-						// create warp of the correct type
-						std::string method = (w.hasChild("method")) ? w.getValueForKey<std::string>("method") : "unknown";
-						if (child.hasChild("afboindex")) {
-							// TODO
-						}
-						if (method == "bilinear") {
-							WarpBilinearRef warp(new WarpBilinear());
-							warp->fromJson(child);
-							warps.push_back(warp);
-						}
-						else if (method == "perspective") {
-							WarpPerspectiveRef warp(new WarpPerspective());
-							warp->fromJson(child);
-							warps.push_back(warp);
-						}
-						else if (method == "perspectivebilinear") {
-							WarpPerspectiveBilinearRef warp(new WarpPerspectiveBilinear());
-							warp->fromJson(child);
-							warps.push_back(warp);
+						if (child.hasChild("warp")) {
+							JsonTree w(child.getChild("warp"));
+							// create warp of the correct type
+							std::string method = (w.hasChild("method")) ? w.getValueForKey<std::string>("method") : "unknown";
+							if (child.hasChild("afboindex")) {
+								// TODO
+							}
+							if (method == "bilinear") {
+								WarpBilinearRef warp(new WarpBilinear());
+								warp->fromJson(child);
+								warps.push_back(warp);
+							}
+							else if (method == "perspective") {
+								WarpPerspectiveRef warp(new WarpPerspective());
+								warp->fromJson(child);
+								warps.push_back(warp);
+							}
+							else if (method == "perspectivebilinear") {
+								WarpPerspectiveBilinearRef warp(new WarpPerspectiveBilinear());
+								warp->fromJson(child);
+								warps.push_back(warp);
+							}
 						}
 					}
-
-
 				}
-
+			}
+			catch (const JsonTree::ExcJsonParserError& exc) {
+				CI_LOG_W(exc.what());
+			}
+			catch (...) {
+				CI_LOG_W("Warp::load error");
 			}
 			return warps;
 		}
 
 		void Warp::save(const WarpList &warps, const DataTargetRef &target)
 		{
-			JsonTree		json;
-			// create warps json
-			JsonTree warpsJson = JsonTree::makeArray("warps");
-			//warpsJson.addChild(ci::JsonTree("warps", "unknown"));
-			// 
-			for (unsigned i = 0; i < warps.size(); ++i) {
-				if (!warps[i]->isDeleted()) {
-					// create warp
-					JsonTree	warp(warps[i]->toJson());
-					warp.addChild(ci::JsonTree("id", i + 1));
+			try {
+				JsonTree		json;
+				// create warps json
+				JsonTree warpsJson = JsonTree::makeArray("warps");
+				//warpsJson.addChild(ci::JsonTree("warps", "unknown"));
+				// 
+				for (unsigned i = 0; i < warps.size(); ++i) {
+					if (!warps[i]->isDeleted()) {
+						// create warp
+						JsonTree	warp(warps[i]->toJson());
+						warp.addChild(ci::JsonTree("id", i + 1));
 
-					// create <warp>
-					warpsJson.pushBack(warp);
+						// create <warp>
+						warpsJson.pushBack(warp);
+					}
 				}
+				// write file
+				json.pushBack(warpsJson);
+				json.write(target);
 			}
-			// write file
-			json.pushBack(warpsJson);
-			json.write(target);
+			catch (const JsonTree::ExcJsonParserError& exc) {
+				CI_LOG_W(exc.what());
+			}
+			catch (...) {
+				CI_LOG_W("Warp::save error");
+			}
 		}
 
 		bool Warp::handleMouseMove(WarpList &warps, MouseEvent &event)
@@ -795,41 +810,41 @@ namespace ph {
 					auto glsl = gl::GlslProg::create(
 						gl::GlslProg::Format()
 						.vertex(
-						"#version 150\n"
-						""
-						"uniform mat4 ciViewProjection;\n"
-						""
-						"in vec4 ciPosition;\n"
-						"in vec2 ciTexCoord0;\n"
-						"in vec4 ciColor;\n"
-						""
-						"in vec4 iPositionScale;\n"
-						"in vec4 iColor;\n"
-						""
-						"out vec2 vertTexCoord0;\n"
-						"out vec4 vertColor;\n"
-						""
-						"void main(void) {\n"
-						"	vertTexCoord0 = ciTexCoord0;\n"
-						"	vertColor = ciColor * iColor;\n"
-						"	gl_Position = ciViewProjection * vec4( ciPosition.xy * iPositionScale.z + iPositionScale.xy, ciPosition.zw );\n"
-						"}")
+							"#version 150\n"
+							""
+							"uniform mat4 ciViewProjection;\n"
+							""
+							"in vec4 ciPosition;\n"
+							"in vec2 ciTexCoord0;\n"
+							"in vec4 ciColor;\n"
+							""
+							"in vec4 iPositionScale;\n"
+							"in vec4 iColor;\n"
+							""
+							"out vec2 vertTexCoord0;\n"
+							"out vec4 vertColor;\n"
+							""
+							"void main(void) {\n"
+							"	vertTexCoord0 = ciTexCoord0;\n"
+							"	vertColor = ciColor * iColor;\n"
+							"	gl_Position = ciViewProjection * vec4( ciPosition.xy * iPositionScale.z + iPositionScale.xy, ciPosition.zw );\n"
+							"}")
 						.fragment(
-						"#version 150\n"
-						""
-						"in  vec2 vertTexCoord0;\n"
-						"in  vec4 vertColor;\n"
-						""
-						"out vec4 fragColor;\n"
-						""
-						"void main(void) {\n"
-						"	vec2 uv = vertTexCoord0 * 2.0 - 1.0;\n"
-						"	float d = dot( uv, uv );\n"
-						"	float rim = smoothstep( 0.7, 0.8, d );\n"
-						"	rim += smoothstep( 0.3, 0.4, d ) - smoothstep( 0.5, 0.6, d );\n"
-						"	rim += smoothstep( 0.1, 0.0, d );\n"
-						"	fragColor = mix( vec4( 0.0, 0.0, 0.0, 0.25 ), vertColor, rim );\n"
-						"}"));
+							"#version 150\n"
+							""
+							"in  vec2 vertTexCoord0;\n"
+							"in  vec4 vertColor;\n"
+							""
+							"out vec4 fragColor;\n"
+							""
+							"void main(void) {\n"
+							"	vec2 uv = vertTexCoord0 * 2.0 - 1.0;\n"
+							"	float d = dot( uv, uv );\n"
+							"	float rim = smoothstep( 0.7, 0.8, d );\n"
+							"	rim += smoothstep( 0.3, 0.4, d ) - smoothstep( 0.5, 0.6, d );\n"
+							"	rim += smoothstep( 0.1, 0.0, d );\n"
+							"	fragColor = mix( vec4( 0.0, 0.0, 0.0, 0.25 ), vertColor, rim );\n"
+							"}"));
 
 					mInstancedBatch = gl::Batch::create(mesh, glsl, { { geom::Attrib::CUSTOM_0, "iPositionScale" }, { geom::Attrib::CUSTOM_1, "iColor" } });
 				}
