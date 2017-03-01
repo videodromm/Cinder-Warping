@@ -286,7 +286,7 @@ namespace ph {
 				mBShaderFilename = (warp.hasChild("bshaderfilename")) ? warp.getValueForKey<std::string>("bshaderfilename") : "0.frag";
 				mMixFboIndex = (warp.hasChild("mixfboindex")) ? warp.getValueForKey<int>("mixfboindex") : 0;
 				ABCrossfade = (warp.hasChild("crossfade")) ? warp.getValueForKey<float>("crossfade") : 1.0f;
-				mActive = (warp.hasChild("active")) ? warp.getValueForKey<float>("active") : true;
+				mActive = (warp.hasChild("active")) ? warp.getValueForKey<bool>("active") : true;
 				mDeleted = false; // if we load it, we don't delete it!
 				// load control points
 				mPoints.clear();
