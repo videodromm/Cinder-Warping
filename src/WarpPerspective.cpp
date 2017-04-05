@@ -91,6 +91,9 @@ void WarpPerspective::reset()
 
 void WarpPerspective::draw( const gl::Texture2dRef &texture, const Area &srcArea, const Rectf &destRect )
 {
+	if( !texture )
+		return;
+
 	// clip against bounds
 	Area  area = srcArea;
 	Rectf rect = destRect;
@@ -98,7 +101,7 @@ void WarpPerspective::draw( const gl::Texture2dRef &texture, const Area &srcArea
 
 	// save current drawing color
 	const ColorA &  currentColor = gl::context()->getCurrentColor();
-	gl::ScopedColor color( currentColor );
+	gl::ScopedColor scpColor( currentColor );
 
 	// adjust brightness
 	if( mBrightness < 1.f ) {
@@ -111,19 +114,26 @@ void WarpPerspective::draw( const gl::Texture2dRef &texture, const Area &srcArea
 	// create shader if necessary
 	createShader();
 
+	auto &shader = texture->getTarget() == GL_TEXTURE_RECTANGLE ? mShader2DRect : mShader2D;
+
 	// draw texture
+	auto coords = texture->getAreaTexCoords( srcArea );
+
 	gl::pushModelMatrix();
 	gl::multModelMatrix( getTransform() );
 
-	gl::ScopedTextureBind tex0( texture );
-	gl::ScopedGlslProg    shader( mShader );
-	mShader->uniform( "uLuminance", mLuminance );
-	mShader->uniform( "uGamma", mGamma );
-	mShader->uniform( "uEdges", mEdges );
-	mShader->uniform( "uExponent", mExponent );
+	gl::ScopedTextureBind scpTex0( texture );
+	gl::ScopedGlslProg    scpGlsl( shader );
+	shader->uniform( "uTex0", 0 );
+	shader->uniform( "uCoords", vec4( coords.x1, coords.y1, coords.x2 - coords.x1, coords.y2 - coords.y1 ) );
+	shader->uniform( "uLuminance", mLuminance );
+	shader->uniform( "uGamma", mGamma );
+	shader->uniform( "uEdges", mEdges );
+	shader->uniform( "uExponent", mExponent );
+	shader->uniform( "uEditMode", (bool)isEditModeEnabled() );
+	shader->uniform( "uGammaMode", (bool)isEditModeEnabled() && (bool)isGammaModeEnabled() && mSelected < mPoints.size() );
 
-	auto coords = texture->getAreaTexCoords( srcArea );
-	gl::drawSolidRect( rect, coords.getUpperLeft(), coords.getLowerRight() );
+	gl::drawSolidRect( rect, vec2( 0 ), vec2( 1 ) );
 
 	gl::popModelMatrix();
 
@@ -153,11 +163,11 @@ void WarpPerspective::draw( bool controls )
 		gl::pushModelMatrix();
 		gl::multModelMatrix( getTransform() );
 
-		gl::ScopedGlslProg  shader( gl::getStockShader( gl::ShaderDef().color() ) );
-		gl::ScopedLineWidth linewidth( 1.0f );
+		gl::ScopedGlslProg  scpGlsl( gl::getStockShader( gl::ShaderDef().color() ) );
+		gl::ScopedLineWidth scpLinewidth( 1.0f );
 		glHint( GL_LINE_SMOOTH_HINT, GL_NICEST );
 
-		gl::ScopedColor color( Color::white() );
+		gl::ScopedColor scpColor( Color::white() );
 		for( int i = 0; i <= 1; i++ ) {
 			float s = i / 1.0f;
 			gl::drawLine( vec2( s * (float)mWidth, 0.0f ), vec2( s * (float)mWidth, (float)mHeight ) );
@@ -187,10 +197,12 @@ void WarpPerspective::keyDown( KeyEvent &event )
 		return;
 
 	// disable keyboard input when not in edit mode
-	if( !isEditModeEnabled() ) return;
+	if( !isEditModeEnabled() )
+		return;
 
 	// do not listen to key input if not selected
-	if( mSelected >= mPoints.size() ) return;
+	if( mSelected >= mPoints.size() )
+		return;
 
 	switch( event.getCode() ) {
 	case KeyEvent::KEY_F9:
@@ -303,7 +315,7 @@ void WarpPerspective::gaussianElimination( float *a, int n ) const
 
 void WarpPerspective::createShader()
 {
-	if( mShader )
+	if( mShader2D && mShader2DRect )
 		return;
 
 	gl::GlslProg::Format fmt;
@@ -312,19 +324,90 @@ void WarpPerspective::createShader()
 	    ""
 	    "uniform mat4 ciModelViewProjection;\n"
 	    ""
+	    "uniform vec4 uCoords;\n"
+	    ""
 	    "in vec4 ciPosition;\n"
 	    "in vec2 ciTexCoord0;\n"
 	    "in vec4 ciColor;\n"
 	    ""
 	    "out vec2 vertTexCoord0;\n"
+	    "out vec2 vertTexCoord1;\n"
 	    "out vec4 vertColor;\n"
 	    ""
 	    "void main( void ) {\n"
 	    "	vertColor = ciColor;\n"
 	    "	vertTexCoord0 = ciTexCoord0;\n"
+	    "	vertTexCoord1 = ciTexCoord0 * uCoords.zw + uCoords.xy;\n"
 	    ""
 	    "	gl_Position = ciModelViewProjection * ciPosition;\n"
 	    "}" );
+
+	fmt.fragment(
+	    "#version 150\n"
+	    ""
+	    "uniform sampler2DRect uTex0;\n"
+	    "uniform vec3          uGamma;\n"
+	    "uniform float         uExponent;\n"
+	    "uniform vec4          uEdges;\n"
+	    "uniform vec3          uLuminance;\n"
+	    "uniform bool          uEditMode;\n"
+	    "uniform bool          uGammaMode;\n"
+	    ""
+	    "in vec2 vertTexCoord0;\n"
+	    "in vec2 vertTexCoord1;\n"
+	    "in vec4 vertColor;\n"
+	    ""
+	    "out vec4 fragColor;\n"
+	    ""
+	    "void main( void ) {\n"
+	    "   fragColor.a = 1.0;\n"
+	    ""
+	    "   if( uGammaMode ) {\n"
+	    "       float b = mod( floor( gl_FragCoord.x / 64.0 ) + floor( gl_FragCoord.y / 64.0 ), 2.0 );\n"
+	    "       float r = mod( gl_FragCoord.x + gl_FragCoord.y, 2.0 );\n"
+	    "       int c = int( mod( floor( gl_FragCoord.x / 128.0 ) + 2 * floor( gl_FragCoord.y / 128.0 ), 4.0 ) );\n"
+	    "       vec3 clr;\n"
+	    "       if( c < 3.0 ) clr[c] = 1.0;\n"
+	    "       else clr = vec3( 1 );\n"
+	    "	    const vec3 one = vec3( 1.0 );\n"
+	    "       fragColor.rgb = pow( mix( 0.5 * clr, r * clr, b ), one / uGamma );\n"
+	    "   }\n"
+	    "   else {\n"
+	    "       fragColor.rgb = texture( uTex0, vertTexCoord1 ).rgb;\n"
+	    ""
+	    // Edge blending.
+	    "       float a = 1.0;\n"
+	    "       if( uEdges.x > 0.0 ) a *= clamp( vertTexCoord0.x / ( uEdges.x ), 0.0, 1.0 );\n"
+	    "       if( uEdges.y > 0.0 ) a *= clamp( vertTexCoord0.y / ( uEdges.y ), 0.0, 1.0 );\n"
+	    "       if( uEdges.z < 1.0 ) a *= clamp( ( 1.0 - vertTexCoord0.x ) / ( 1.0 - uEdges.z ), 0.0, 1.0 );\n"
+	    "       if( uEdges.w < 1.0 ) a *= clamp( ( 1.0 - vertTexCoord0.y ) / ( 1.0 - uEdges.w ), 0.0, 1.0 );\n"
+	    ""
+	    "       const vec3 one = vec3( 1.0 );\n"
+	    "       vec3 blend = ( a < 0.5 ) ? ( uLuminance * pow( 2.0 * a, uExponent ) ) : one - ( one - uLuminance ) * pow( 2.0 * ( 1.0 - a ), uExponent );\n"
+	    ""
+	    "       fragColor.rgb *= clamp( pow( blend, one / uGamma ), 0.0, 1.0 );\n"
+	    "   }\n"
+	    ""
+	    // Draw edge blending limits.
+	    "	if( uEditMode ) {\n"
+	    "       const vec4 kEdgeColor = vec4( 0, 1, 1, 1 );\n"
+	    "       vec4 edges = abs( vertTexCoord0.xyxy - uEdges );\n"
+	    "       vec4 w = 0.5 * fwidth( edges );\n"
+	    "       float e = step( edges.x, w.x );\n"
+	    "       e += step( edges.y, w.y );\n"
+	    "       e += step( edges.z, w.z );\n"
+	    "       e += step( edges.w, w.w );\n"
+	    "       fragColor = mix( fragColor, kEdgeColor, e );\n"
+	    "   }\n"
+	    "}" );
+
+	try {
+		mShader2DRect = gl::GlslProg::create( fmt );
+	}
+	catch( const std::exception &e ) {
+		console() << e.what() << std::endl;
+	}
+
 	fmt.fragment(
 	    "#version 150\n"
 	    ""
@@ -333,30 +416,59 @@ void WarpPerspective::createShader()
 	    "uniform vec3 uGamma;\n"
 	    "uniform vec4  uEdges;\n"
 	    "uniform float uExponent;\n"
+	    "uniform bool  uEditMode;\n"
+	    "uniform bool  uGammaMode;\n"
 	    ""
 	    "in vec2 vertTexCoord0;\n"
+	    "in vec2 vertTexCoord1;\n"
 	    "in vec4 vertColor;\n"
 	    ""
 	    "out vec4 fragColor;\n"
 	    ""
 	    "void main( void ) {\n"
-	    "	vec4 texColor = texture( uTex0, vertTexCoord0 );\n"
+	    "   fragColor.a = 1.0;\n"
 	    ""
-	    "	float a = 1.0;\n"
-	    "	if( uEdges.x > 0.0 ) a *= clamp( vertTexCoord0.x / uEdges.x, 0.0, 1.0 );\n"
-	    "	if( uEdges.y > 0.0 ) a *= clamp( vertTexCoord0.y / uEdges.y, 0.0, 1.0 );\n"
-	    "	if( uEdges.z > 0.0 ) a *= clamp( ( 1.0 - vertTexCoord0.x ) / uEdges.z, 0.0, 1.0 );\n"
-	    "	if( uEdges.w > 0.0 ) a *= clamp( ( 1.0 - vertTexCoord0.y ) / uEdges.w, 0.0, 1.0 );\n"
+	    "   if( uGammaMode ) {\n"
+	    "       float b = mod( floor( gl_FragCoord.x / 64.0 ) + floor( gl_FragCoord.y / 64.0 ), 2.0 );\n"
+	    "       float r = mod( gl_FragCoord.x + gl_FragCoord.y, 2.0 );\n"
+	    "       int c = int( mod( floor( gl_FragCoord.x / 128.0 ) + 2 * floor( gl_FragCoord.y / 128.0 ), 4.0 ) );\n"
+	    "       vec3 clr;\n"
+	    "       if( c < 3.0 ) clr[c] = 1.0;\n"
+	    "       else clr = vec3( 1 );\n"
+	    "	    const vec3 one = vec3( 1.0 );\n"
+	    "       fragColor.rgb = pow( mix( 0.5 * clr, r * clr, b ), one / uGamma );\n"
+	    "   }\n"
+	    "   else {\n"
+	    "	    fragColor.rgb = texture( uTex0, vertTexCoord1 ).rgb;\n"
 	    ""
-	    "	const vec3 one = vec3( 1.0 );\n"
-	    "	vec3 blend = ( a < 0.5 ) ? ( uLuminance * pow( 2.0 * a, uExponent ) ) : one - ( one - uLuminance ) * pow( 2.0 * ( 1.0 - a ), uExponent );\n"
+	    // Edge blending.
+	    "       float a = 1.0;\n"
+	    "       if( uEdges.x > 0.0 ) a *= clamp( vertTexCoord0.x / uEdges.x, 0.0, 1.0 );\n"
+	    "       if( uEdges.y > 0.0 ) a *= clamp( vertTexCoord0.y / uEdges.y, 0.0, 1.0 );\n"
+	    "       if( uEdges.z < 1.0 ) a *= clamp( ( 1.0 - vertTexCoord0.x ) / ( 1.0 - uEdges.z ), 0.0, 1.0 );\n"
+	    "       if( uEdges.w < 1.0 ) a *= clamp( ( 1.0 - vertTexCoord0.y ) / ( 1.0 - uEdges.w ), 0.0, 1.0 );\n"
 	    ""
-	    "	texColor.rgb *= pow( blend, one / uGamma );\n"
+	    "        const vec3 one = vec3( 1.0 );\n"
+	    "        vec3 blend = ( a < 0.5 ) ? ( uLuminance * pow( 2.0 * a, uExponent ) ) : one - ( one - uLuminance ) * pow( 2.0 * ( 1.0 - a ), uExponent );\n"
 	    ""
-	    "	fragColor = texColor;\n"
+	    "       fragColor.rgb *= clamp( pow( blend, one / uGamma ), 0.0, 1.0 );\n"
+	    "   }\n"
+	    ""
+	    // Draw edge blending limits.
+	    "	if( uEditMode ) {\n"
+	    "       const vec4 kEdgeColor = vec4( 0, 1, 1, 1 );\n"
+	    "       vec4 edges = abs( vertTexCoord0.xyxy - uEdges );\n"
+	    "       vec4 w = 0.5 * fwidth( edges );\n"
+	    "       float e = step( edges.x, w.x );\n"
+	    "       e += step( edges.y, w.y );\n"
+	    "       e += step( edges.z, w.z );\n"
+	    "       e += step( edges.w, w.w );\n"
+	    "       fragColor = mix( fragColor, kEdgeColor, e );\n"
+	    "   }\n"
 	    "}" );
+
 	try {
-		mShader = gl::GlslProg::create( fmt );
+		mShader2D = gl::GlslProg::create( fmt );
 	}
 	catch( const std::exception &e ) {
 		console() << e.what() << std::endl;

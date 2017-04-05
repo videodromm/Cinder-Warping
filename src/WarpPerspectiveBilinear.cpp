@@ -144,8 +144,10 @@ void WarpPerspectiveBilinear::mouseMove( MouseEvent &event )
 
 void WarpPerspectiveBilinear::mouseDown( MouseEvent &event )
 {
-	if( !isEditModeEnabled() ) return;
-	if( mSelected >= mPoints.size() ) return;
+	if( !isEditModeEnabled() )
+		return;
+	if( mSelected >= mPoints.size() )
+		return;
 
 	// depending on selected control point, let perspective or bilinear warp handle it
 	if( isCorner( mSelected ) ) {
@@ -158,8 +160,10 @@ void WarpPerspectiveBilinear::mouseDown( MouseEvent &event )
 
 void WarpPerspectiveBilinear::mouseDrag( MouseEvent &event )
 {
-	if( !isEditModeEnabled() ) return;
-	if( mSelected >= mPoints.size() ) return;
+	if( !isEditModeEnabled() )
+		return;
+	if( mSelected >= mPoints.size() )
+		return;
 
 	// depending on selected control point, let perspective or bilinear warp handle it
 	if( isCorner( mSelected ) ) {
@@ -172,8 +176,10 @@ void WarpPerspectiveBilinear::mouseDrag( MouseEvent &event )
 
 void WarpPerspectiveBilinear::keyDown( KeyEvent &event )
 {
-	if( !isEditModeEnabled() ) return;
-	if( mSelected >= mPoints.size() ) return;
+	if( !isEditModeEnabled() )
+		return;
+	if( mSelected >= mPoints.size() )
+		return;
 
 	switch( event.getCode() ) {
 	case KeyEvent::KEY_UP:
@@ -234,7 +240,8 @@ vec2 WarpPerspectiveBilinear::getControlPoint( unsigned index ) const
 		vec2 p = Warp::getControlPoint( index ) * vec2( mWarp->getSize() );
 		vec4 pt = mWarp->getTransform() * vec4( p.x, p.y, 0, 1 );
 
-		if( pt.w != 0 ) pt.w = 1 / pt.w;
+		if( pt.w != 0 )
+			pt.w = 1 / pt.w;
 		pt *= pt.w;
 
 		return vec2( pt.x, pt.y ) / mWindowSize;
@@ -253,7 +260,8 @@ void WarpPerspectiveBilinear::setControlPoint( unsigned index, const vec2 &pos )
 		vec2 p = pos * mWindowSize;
 		vec4 pt = mWarp->getInvertedTransform() * vec4( p.x, p.y, 0, 1 );
 
-		if( pt.w != 0 ) pt.w = 1 / pt.w;
+		if( pt.w != 0 )
+			pt.w = 1 / pt.w;
 		pt *= pt.w;
 
 		vec2 size( mWarp->getSize() );
