@@ -36,7 +36,6 @@ namespace warping {
 
 WarpBilinear::WarpBilinear( const ci::gl::Fbo::Format &format )
     : Warp( BILINEAR )
-    , mTarget( GL_TEXTURE_2D )
     , mIsLinear( false )
     , mIsAdaptive( true )
     , mX1( 0.0f )
@@ -106,7 +105,7 @@ void WarpBilinear::reset()
 
 void WarpBilinear::draw( const gl::Texture2dRef &texture, const Area &srcArea, const Rectf &destRect )
 {
-	gl::ScopedTextureBind scpTex0( texture );
+	gl::ScopedTextureBind tex0( texture );
 
 	// clip against bounds
 	Area  area = srcArea;
@@ -117,8 +116,7 @@ void WarpBilinear::draw( const gl::Texture2dRef &texture, const Area &srcArea, c
 	float w = static_cast<float>( texture->getWidth() );
 	float h = static_cast<float>( texture->getHeight() );
 
-	mTarget = texture->getTarget();
-	if( mTarget == GL_TEXTURE_RECTANGLE_ARB )
+	if( texture->getTarget() == GL_TEXTURE_RECTANGLE_ARB )
 		setTexCoords( (float)area.x1, (float)area.y1, (float)area.x2, (float)area.y2 );
 	else
 		setTexCoords( area.x1 / w, area.y1 / h, area.x2 / w, area.y2 / h );
@@ -160,8 +158,7 @@ void WarpBilinear::begin()
 
 void WarpBilinear::end()
 {
-	if( !mFbo )
-		return;
+	if( !mFbo ) return;
 
 	// restore matrices
 	gl::popMatrices();
@@ -187,14 +184,14 @@ void WarpBilinear::draw( bool controls )
 	createShader();
 	createBuffers();
 
-	if( !mVboMesh )
-		return;
+	if( !mVboMesh ) return;
 
 	// save current texture mode, drawing color, line width and depth buffer state
 	const ColorA &currentColor = gl::context()->getCurrentColor();
 
-	gl::ScopedColor scpColor( currentColor );
-	gl::ScopedDepth scpDepth( false );
+	gl::ScopedColor color( currentColor );
+	gl::ScopedState disableDepthRead( GL_DEPTH_TEST, GL_FALSE );
+	gl::ScopedState disableDepthWrite( GL_DEPTH_WRITEMASK, GL_FALSE );
 
 	glHint( GL_LINE_SMOOTH_HINT, GL_NICEST );
 
@@ -207,20 +204,16 @@ void WarpBilinear::draw( bool controls )
 	}
 
 	// draw textured mesh
-	auto &             shader = ( mTarget == GL_TEXTURE_RECTANGLE ) ? mShader2DRect : mShader2D;
-	gl::ScopedGlslProg scpGlsl( shader );
-	shader->uniform( "uTex0", 0 );
-	shader->uniform( "uExtends", vec4( mWidth, mHeight, mWidth / float( mControlsX - 1 ), mHeight / float( mControlsY - 1 ) ) );
-	shader->uniform( "uCoords", vec4( mX1, mY1, mX2 - mX1, mY2 - mY1 ) );
-	shader->uniform( "uLuminance", mLuminance );
-	shader->uniform( "uGamma", mGamma );
-	shader->uniform( "uEdges", mEdges );
-	shader->uniform( "uExponent", mExponent );
-	shader->uniform( "uEditMode", (bool)isEditModeEnabled() );
-	shader->uniform( "uGammaMode", (bool)isEditModeEnabled() && (bool)isGammaModeEnabled() && mSelected < mPoints.size() );
+	gl::ScopedGlslProg shader( mShader );
+	mShader->uniform( "uTex0", 0 );
+	mShader->uniform( "uExtends", vec4( mWidth, mHeight, mWidth / float( mControlsX - 1 ), mHeight / float( mControlsY - 1 ) ) );
+	mShader->uniform( "uLuminance", mLuminance );
+	mShader->uniform( "uGamma", mGamma );
+	mShader->uniform( "uEdges", mEdges );
+	mShader->uniform( "uExponent", mExponent );
+	mShader->uniform( "uEditMode", (bool)isEditModeEnabled() );
 
-	auto &batch = ( mTarget == GL_TEXTURE_RECTANGLE ) ? mBatch2DRect : mBatch2D;
-	batch->draw();
+	mBatch->draw();
 
 	// draw edit interface
 	if( isEditModeEnabled() && controls && mSelected < mPoints.size() ) {
@@ -240,12 +233,10 @@ void WarpBilinear::keyDown( KeyEvent &event )
 		return;
 
 	// disable keyboard input when not in edit mode
-	if( !isEditModeEnabled() )
-		return;
+	if( !isEditModeEnabled() ) return;
 
 	// do not listen to key input if not selected
-	if( mSelected >= mPoints.size() )
-		return;
+	if( mSelected >= mPoints.size() ) return;
 
 	// in case we need to find the closest control point
 	float distance;
@@ -380,8 +371,7 @@ void WarpBilinear::createMesh( int resolutionX, int resolutionY )
 	// evenly divided by mControlsX and mControlsY
 	if( mControlsX < resolutionX ) {
 		int dx = ( resolutionX - 1 ) % ( mControlsX - 1 );
-		if( dx >= ( mControlsX / 2 ) )
-			dx -= ( mControlsX - 1 );
+		if( dx >= ( mControlsX / 2 ) ) dx -= ( mControlsX - 1 );
 		resolutionX -= dx;
 	}
 	else {
@@ -390,8 +380,7 @@ void WarpBilinear::createMesh( int resolutionX, int resolutionY )
 
 	if( mControlsY < resolutionY ) {
 		int dy = ( resolutionY - 1 ) % ( mControlsY - 1 );
-		if( dy >= ( mControlsY / 2 ) )
-			dy -= ( mControlsY - 1 );
+		if( dy >= ( mControlsY / 2 ) ) dy -= ( mControlsY - 1 );
 		resolutionY -= dy;
 	}
 	else {
@@ -416,8 +405,7 @@ void WarpBilinear::createMesh( int resolutionX, int resolutionY )
 
 	//
 	mVboMesh = gl::VboMesh::create( numVertices, GL_TRIANGLES, { layout }, numIndices, GL_UNSIGNED_INT );
-	if( !mVboMesh )
-		return;
+	if( !mVboMesh ) return;
 
 	// buffer static data
 	int i = 0;
@@ -440,8 +428,8 @@ void WarpBilinear::createMesh( int resolutionX, int resolutionY )
 				indices[i++] = ( x + 0 ) * resolutionY + ( y + 1 );
 			}
 			// texCoords
-			float tx = x / (float)( resolutionX - 1 );
-			float ty = y / (float)( resolutionY - 1 );
+			float tx = lerp<float, float>( mX1, mX2, x / (float)( resolutionX - 1 ) );
+			float ty = lerp<float, float>( mY1, mY2, y / (float)( resolutionY - 1 ) );
 			texCoords[j++] = vec2( tx, ty );
 		}
 	}
@@ -460,12 +448,8 @@ void WarpBilinear::createMesh( int resolutionX, int resolutionY )
 
 void WarpBilinear::updateMesh()
 {
-	if( !mShader2D || !mShader2DRect )
-		return;
-	if( !mVboMesh )
-		return;
-	if( !mIsDirty )
-		return;
+	if( !mVboMesh ) return;
+	if( !mIsDirty ) return;
 
 	vec2  p;
 	float u, v;
@@ -527,8 +511,7 @@ void WarpBilinear::updateMesh()
 	mVboMesh->bufferAttrib( geom::POSITION, positions.size() * sizeof( vec3 ), positions.data() );
 #endif
 
-	mBatch2D = gl::Batch::create( mVboMesh, mShader2D );
-	mBatch2DRect = gl::Batch::create( mVboMesh, mShader2DRect );
+	mBatch = gl::Batch::create( mVboMesh, mShader );
 
 	mIsDirty = false;
 }
@@ -539,14 +522,10 @@ vec2 WarpBilinear::getPoint( int col, int row ) const
 	int maxRow = mControlsY - 1;
 
 	// here's the magic: extrapolate points beyond the edges
-	if( col < 0 )
-		return 2.0f * getPoint( 0, row ) - getPoint( 0 - col, row );
-	if( row < 0 )
-		return 2.0f * getPoint( col, 0 ) - getPoint( col, 0 - row );
-	if( col > maxCol )
-		return 2.0f * getPoint( maxCol, row ) - getPoint( 2 * maxCol - col, row );
-	if( row > maxRow )
-		return 2.0f * getPoint( col, maxRow ) - getPoint( col, 2 * maxRow - row );
+	if( col < 0 ) return 2.0f * getPoint( 0, row ) - getPoint( 0 - col, row );
+	if( row < 0 ) return 2.0f * getPoint( col, 0 ) - getPoint( col, 0 - row );
+	if( col > maxCol ) return 2.0f * getPoint( maxCol, row ) - getPoint( 2 * maxCol - col, row );
+	if( row > maxRow ) return 2.0f * getPoint( col, maxRow ) - getPoint( col, 2 * maxRow - row );
 
 	// points on the edges or within the mesh can simply be looked up
 	return mPoints[( col * mControlsY ) + row];
@@ -697,7 +676,7 @@ void WarpBilinear::setNumControlY( int n )
 
 void WarpBilinear::createShader()
 {
-	if( mShader2D && mShader2DRect )
+	if( mShader )
 		return;
 
 	gl::GlslProg::Format fmt;
@@ -706,116 +685,31 @@ void WarpBilinear::createShader()
 	    ""
 	    "uniform mat4 ciModelViewProjection;\n"
 	    ""
-	    "uniform vec4 uCoords;\n"
-	    ""
 	    "in vec4 ciPosition;\n"
 	    "in vec2 ciTexCoord0;\n"
 	    "in vec4 ciColor;\n"
 	    ""
 	    "out vec2 vertTexCoord0;\n"
-	    "out vec2 vertTexCoord1;\n"
 	    "out vec4 vertColor;\n"
 	    ""
 	    "void main( void ) {\n"
 	    "	vertColor = ciColor;\n"
 	    "	vertTexCoord0 = ciTexCoord0;\n"
-	    "   vertTexCoord1 = ciTexCoord0 * uCoords.zw + uCoords.xy;\n"
 	    ""
 	    "	gl_Position = ciModelViewProjection * ciPosition;\n"
 	    "}" );
-
-	fmt.fragment(
-	    "#version 150\n"
-	    ""
-	    "uniform sampler2DRect uTex0;\n"
-	    "uniform vec4          uExtends;\n"
-	    "uniform vec4          uEdges;\n"
-	    "uniform vec3          uGamma;\n"
-	    "uniform float         uExponent;\n"
-	    "uniform vec3          uLuminance;\n"
-	    "uniform bool          uEditMode;\n"
-	    "uniform bool          uGammaMode;\n"
-	    ""
-	    "in vec2 vertTexCoord0;\n"
-	    "in vec2 vertTexCoord1;\n"
-	    "in vec4 vertColor;\n"
-	    ""
-	    "out vec4 fragColor;\n"
-	    ""
-	    "float grid( in vec2 uv, in vec2 size ) {\n"
-	    "	vec2 coord = uv / size;\n"
-	    "	vec2 grid = abs( fract( coord - 0.5 ) - 0.5 ) / ( 2.0 * fwidth( coord ) );\n"
-	    "	float line = min( grid.x, grid.y );\n"
-	    "	return 1.0 - min( line, 1.0 );\n"
-	    "}\n"
-	    ""
-	    "void main( void ) {\n"
-	    "   fragColor.a = 1.0;\n"
-	    ""
-	    "   if( uGammaMode ) {\n"
-	    "       float b = mod( floor( gl_FragCoord.x / 64.0 ) + floor( gl_FragCoord.y / 64.0 ), 2.0 );\n"
-	    "       float r = mod( gl_FragCoord.x + gl_FragCoord.y, 2.0 );\n"
-	    "       int c = int( mod( floor( gl_FragCoord.x / 128.0 ) + 2 * floor( gl_FragCoord.y / 128.0 ), 4.0 ) );\n"
-	    "       vec3 clr;\n"
-	    "       if( c < 3.0 ) clr[c] = 1.0;\n"
-	    "       else clr = vec3( 1 );\n"
-	    "	    const vec3 one = vec3( 1.0 );\n"
-	    "       fragColor.rgb = pow( mix( 0.5 * clr, r * clr, b ), one / uGamma );\n"
-	    "   }\n"
-	    "   else {\n"
-	    "       fragColor.rgb = texture( uTex0, vertTexCoord1 ).rgb;\n"
-	    ""
-	    // Edge blending.
-	    "       float a = 1.0;\n"
-	    "       if( uEdges.x > 0.0 ) a *= clamp( vertTexCoord0.x / uEdges.x, 0.0, 1.0 );\n"
-	    "       if( uEdges.y > 0.0 ) a *= clamp( vertTexCoord0.y / uEdges.y, 0.0, 1.0 );\n"
-	    "       if( uEdges.z < 1.0 ) a *= clamp( ( 1.0 - vertTexCoord0.x ) / ( 1.0 - uEdges.z ), 0.0, 1.0 );\n"
-	    "       if( uEdges.w < 1.0 ) a *= clamp( ( 1.0 - vertTexCoord0.y ) / ( 1.0 - uEdges.w ), 0.0, 1.0 );\n"
-	    ""
-	    "       const vec3 one = vec3( 1.0 );\n"
-	    "       vec3 blend = ( a < 0.5 ) ? ( uLuminance * pow( 2.0 * a, uExponent ) ) : one - ( one - uLuminance ) * pow( 2.0 * ( 1.0 - a ), uExponent );\n"
-	    ""
-	    "       fragColor.rgb *= clamp( pow( blend, one / uGamma ), 0.0, 1.0 );\n"
-	    "   }\n"
-	    ""
-	    "	if( uEditMode ) {\n"
-	    // Draw control point grid.
-	    "		float f = grid( vertTexCoord0.xy, uExtends.zw );\n"
-	    "		vec4  gridColor = vec4( 1 );\n"
-	    "		fragColor.rgb = mix( fragColor.rgb, gridColor.rgb, f );\n"
-	    // Draw edge blending limits.
-	    "       const vec4 kEdgeColor = vec4( 0, 1, 1, 1 );\n"
-	    "       vec4 edges = abs( vertTexCoord0.xyxy - uEdges );\n"
-	    "       vec4 w = 0.5 * fwidth( edges );\n"
-	    "       float e = step( edges.x, w.x );\n"
-	    "       e += step( edges.y, w.y );\n"
-	    "       e += step( edges.z, w.z );\n"
-	    "       e += step( edges.w, w.w );\n"
-	    "       fragColor.rgb = mix( fragColor.rgb, kEdgeColor.rgb, e );\n"
-	    "	}\n"
-	    "}" );
-
-	try {
-		mShader2DRect = gl::GlslProg::create( fmt );
-	}
-	catch( const std::exception &e ) {
-		console() << e.what() << std::endl;
-	}
-
 	fmt.fragment(
 	    "#version 150\n"
 	    ""
 	    "uniform sampler2D uTex0;\n"
-	    "uniform vec4      uExtends;\n"
-	    "uniform vec4      uEdges;\n"
-	    "uniform vec3      uGamma;\n"
-	    "uniform float     uExponent;\n"
-	    "uniform vec3      uLuminance;\n"
-	    "uniform bool      uEditMode;\n"
-	    "uniform bool      uGammaMode;\n"
+	    "uniform vec4 uExtends;\n"
+	    "uniform vec3 uLuminance;\n"
+	    "uniform vec3 uGamma;\n"
+	    "uniform vec4  uEdges;\n"
+	    "uniform float uExponent;\n"
+	    "uniform bool  uEditMode;\n"
 	    ""
 	    "in vec2 vertTexCoord0;\n"
-	    "in vec2 vertTexCoord1;\n"
 	    "in vec4 vertColor;\n"
 	    ""
 	    "out vec4 fragColor;\n"
@@ -828,53 +722,30 @@ void WarpBilinear::createShader()
 	    "}\n"
 	    ""
 	    "void main( void ) {\n"
-	    "   fragColor.a = 1.0;\n"
+	    "	vec4 texColor = texture( uTex0, vertTexCoord0 );\n"
 	    ""
-	    "   if( uGammaMode ) {\n"
-	    "       float b = mod( floor( gl_FragCoord.x / 64.0 ) + floor( gl_FragCoord.y / 64.0 ), 2.0 );\n"
-	    "       float r = mod( gl_FragCoord.x + gl_FragCoord.y, 2.0 );\n"
-	    "       int c = int( mod( floor( gl_FragCoord.x / 128.0 ) + 2 * floor( gl_FragCoord.y / 128.0 ), 4.0 ) );\n"
-	    "       vec3 clr;\n"
-	    "       if( c < 3.0 ) clr[c] = 1.0;\n"
-	    "       else clr = vec3( 1 );\n"
-	    "	    const vec3 one = vec3( 1.0 );\n"
-	    "       fragColor.rgb = pow( mix( 0.5 * clr, r * clr, b ), one / uGamma );\n"
-	    "   }\n"
-	    "   else {\n"
-	    "	    fragColor.rgb = texture( uTex0, vertTexCoord1 ).rgb;\n"
+	    "	float a = 1.0;\n"
+	    "	if( uEdges.x > 0.0 ) a *= clamp( vertTexCoord0.x / uEdges.x, 0.0, 1.0 );\n"
+	    "	if( uEdges.y > 0.0 ) a *= clamp( vertTexCoord0.y / uEdges.y, 0.0, 1.0 );\n"
+	    "	if( uEdges.z > 0.0 ) a *= clamp( ( 1.0 - vertTexCoord0.x ) / uEdges.z, 0.0, 1.0 );\n"
+	    "	if( uEdges.w > 0.0 ) a *= clamp( ( 1.0 - vertTexCoord0.y ) / uEdges.w, 0.0, 1.0 );\n"
 	    ""
-	    // Edge blending.
-	    "       float a = 1.0;\n"
-	    "       if( uEdges.x > 0.0 ) a *= clamp( vertTexCoord0.x / uEdges.x, 0.0, 1.0 );\n"
-	    "       if( uEdges.y > 0.0 ) a *= clamp( vertTexCoord0.y / uEdges.y, 0.0, 1.0 );\n"
-	    "       if( uEdges.z < 1.0 ) a *= clamp( ( 1.0 - vertTexCoord0.x ) / ( 1.0 - uEdges.z ), 0.0, 1.0 );\n"
-	    "       if( uEdges.w < 1.0 ) a *= clamp( ( 1.0 - vertTexCoord0.y ) / ( 1.0 - uEdges.w ), 0.0, 1.0 );\n"
+	    "	const vec3 one = vec3( 1.0 );\n"
+	    "	vec3 blend = ( a < 0.5 ) ? ( uLuminance * pow( 2.0 * a, uExponent ) ) : one - ( one - uLuminance ) * pow( 2.0 * ( 1.0 - a ), uExponent );\n"
 	    ""
-	    "       const vec3 one = vec3( 1.0 );\n"
-	    "       vec3 blend = ( a < 0.5 ) ? ( uLuminance * pow( 2.0 * a, uExponent ) ) : one - ( one - uLuminance ) * pow( 2.0 * ( 1.0 - a ), uExponent );\n"
-	    ""
-	    "       fragColor.rgb *= clamp( pow( blend, one / uGamma ), 0.0, 1.0 );\n"
-	    "   }\n"
+	    "	texColor.rgb *= pow( blend, one / uGamma );\n"
 	    ""
 	    "	if( uEditMode ) {\n"
-	    // Draw control point grid.
 	    "		float f = grid( vertTexCoord0.xy * uExtends.xy, uExtends.zw );\n"
-	    "		const vec4 kGridColor = vec4( 1 );\n"
-	    "		fragColor = mix( fragColor, kGridColor, f );\n"
-	    // Draw edge blending limits.
-	    "       const vec4 kEdgeColor = vec4( 0, 1, 1, 1 );\n"
-	    "       vec4 edges = abs( vertTexCoord0.xyxy - uEdges );\n"
-	    "       vec4 w = 0.5 * fwidth( edges );\n"
-	    "       float e = step( edges.x, w.x );\n"
-	    "       e += step( edges.y, w.y );\n"
-	    "       e += step( edges.z, w.z );\n"
-	    "       e += step( edges.w, w.w );\n"
-	    "       fragColor = mix( fragColor, kEdgeColor, e );\n"
+	    "		vec4  gridColor = vec4( 1 );\n"
+	    "		fragColor = mix( texColor, gridColor, f );\n"
+	    "	}\n"
+	    "	else {\n"
+	    "		fragColor = texColor;\n"
 	    "	}\n"
 	    "}" );
-
 	try {
-		mShader2D = gl::GlslProg::create( fmt );
+		mShader = gl::GlslProg::create( fmt );
 	}
 	catch( const std::exception &e ) {
 		console() << e.what() << std::endl;
@@ -898,6 +769,9 @@ Rectf WarpBilinear::getMeshBounds() const
 
 void WarpBilinear::setTexCoords( float x1, float y1, float x2, float y2 )
 {
+	mIsDirty |= ( x1 != mX1 || y1 != mY1 || x2 != mX2 || y2 != mY2 );
+	if( !mIsDirty ) return;
+
 	mX1 = x1;
 	mY1 = y1;
 	mX2 = x2;
