@@ -32,7 +32,8 @@ using namespace ci::app;
 namespace ph {
 	namespace warping {
 
-		std::atomic<bool> Warp::sIsEditMode{ false };
+std::atomic<bool> Warp::sIsEditMode{ false };
+std::atomic<bool> Warp::sIsGammaMode{ false };
 
 		Warp::Warp(WarpType type)
 			: mType(type)
@@ -314,13 +315,15 @@ namespace ph {
 
 		vec2 Warp::getControlPoint(unsigned index) const
 		{
-			if (index >= mPoints.size()) return vec2(0);
+	if( index >= mPoints.size() )
+		return vec2( 0 );
 			return mPoints[index];
 		}
 
 		void Warp::setControlPoint(unsigned index, const vec2 &pos)
 		{
-			if (index >= mPoints.size()) return;
+	if( index >= mPoints.size() )
+		return;
 			mPoints[index] = pos;
 
 			mIsDirty = true;
@@ -328,7 +331,8 @@ namespace ph {
 
 		void Warp::moveControlPoint(unsigned index, const vec2 &shift)
 		{
-			if (index >= mPoints.size()) return;
+	if( index >= mPoints.size() )
+		return;
 			mPoints[index] += shift;
 
 			mIsDirty = true;
@@ -336,7 +340,8 @@ namespace ph {
 
 		void Warp::selectControlPoint(unsigned index)
 		{
-			if (index >= mPoints.size() || index == mSelected) return;
+	if( index >= mPoints.size() || index == mSelected )
+		return;
 
 			mSelected = index;
 			mSelectedTime = app::getElapsedSeconds();
@@ -420,7 +425,8 @@ namespace ph {
 
 			// check if this is a valid file
 			bool isWarp = doc.hasChild("warpconfig");
-			if (!isWarp) return warps;
+	if( !isWarp )
+		return warps;
 
 			//
 			if (isWarp) {
@@ -646,8 +652,10 @@ namespace ph {
 
 		void Warp::mouseDown(cinder::app::MouseEvent &event)
 		{
-			if (!sIsEditMode) return;
-			if (mSelected >= mPoints.size()) return;
+	if( !sIsEditMode )
+		return;
+	if( mSelected >= mPoints.size() )
+		return;
 
 			// calculate offset by converting control point from normalized to standard screen space
 			ivec2 p = (getControlPoint(mSelected) * mWindowSize);
@@ -658,8 +666,10 @@ namespace ph {
 
 		void Warp::mouseDrag(cinder::app::MouseEvent &event)
 		{
-			if (!sIsEditMode) return;
-			if (mSelected >= mPoints.size()) return;
+	if( !sIsEditMode )
+		return;
+	if( mSelected >= mPoints.size() )
+		return;
 
 			vec2 m(event.getPos());
 			vec2 p(m.x - mOffset.x, m.y - mOffset.y);
@@ -691,7 +701,8 @@ namespace ph {
 				return;
 
 			// do not listen to key input if not selected
-			if (mSelected >= mPoints.size()) return;
+	if( mSelected >= mPoints.size() )
+		return;
 
 			switch (event.getCode()) {
 			case KeyEvent::KEY_TAB:
@@ -705,49 +716,115 @@ namespace ph {
 				}
 				else {
 					++mSelected;
-					if (mSelected >= mPoints.size()) mSelected = 0;
+			if( mSelected >= mPoints.size() )
+				mSelected = 0;
 					selectControlPoint(mSelected);
 				}
 				break;
 			case KeyEvent::KEY_UP: {
-				if (mSelected >= mPoints.size()) return;
+		if( mSelected >= mPoints.size() )
+			return;
 				float step = event.isShiftDown() ? 10.0f : 0.5f;
 				mPoints[mSelected].y -= step / mWindowSize.y;
 				mIsDirty = true;
 			} break;
 			case KeyEvent::KEY_DOWN: {
-				if (mSelected >= mPoints.size()) return;
+		if( mSelected >= mPoints.size() )
+			return;
 				float step = event.isShiftDown() ? 10.0f : 0.5f;
 				mPoints[mSelected].y += step / mWindowSize.y;
 				mIsDirty = true;
 			} break;
 			case KeyEvent::KEY_LEFT: {
-				if (mSelected >= mPoints.size()) return;
+		if( mSelected >= mPoints.size() )
+			return;
 				float step = event.isShiftDown() ? 10.0f : 0.5f;
 				mPoints[mSelected].x -= step / mWindowSize.x;
 				mIsDirty = true;
 			} break;
 			case KeyEvent::KEY_RIGHT: {
-				if (mSelected >= mPoints.size()) return;
+		if( mSelected >= mPoints.size() )
+			return;
 				float step = event.isShiftDown() ? 10.0f : 0.5f;
 				mPoints[mSelected].x += step / mWindowSize.x;
 				mIsDirty = true;
 			} break;
 			case KeyEvent::KEY_MINUS:
 			case KeyEvent::KEY_KP_MINUS:
-				if (mSelected >= mPoints.size()) return;
-				mBrightness = math<float>::max(0.0f, mBrightness - 0.01f);
-				break;
-			case KeyEvent::KEY_PLUS:
-			case KeyEvent::KEY_KP_PLUS:
-				if (mSelected >= mPoints.size()) return;
-				mBrightness = math<float>::min(1.0f, mBrightness + 0.01f);
-				break;
-			case KeyEvent::KEY_r:
-				if (mSelected >= mPoints.size()) return;
+		if( mSelected >= mPoints.size() )
+			return;
+		mBrightness = math<float>::max( 0.0f, mBrightness - 0.01f );
+		break;
+	case KeyEvent::KEY_PLUS:
+	case KeyEvent::KEY_KP_PLUS:
+		if( mSelected >= mPoints.size() )
+			return;
+		mBrightness = math<float>::min( 1.0f, mBrightness + 0.01f );
+		break;
+	case KeyEvent::KEY_r:
+		if( mSelected >= mPoints.size() )
+			return;
 				reset();
 				mIsDirty = true;
 				break;
+	case KeyEvent::KEY_KP0:
+		// Toggle gamma mode.
+		Warp::toggleGammaMode();
+		break;
+	case KeyEvent::KEY_KP1:
+		// Decrease red gamma.
+		if( isGammaModeEnabled() && mGamma.r > 0.0f )
+			mGamma.r -= 0.05f;
+		break;
+	case KeyEvent::KEY_KP2:
+		// Decrease green gamma.
+		if( isGammaModeEnabled() && mGamma.g > 0.0f )
+			mGamma.g -= 0.05f;
+		else if( event.isAccelDown() && mEdges.w < 1.0f )
+			mEdges.w += 0.01f;
+		else if( !event.isAccelDown() && mEdges.y < 1.0f )
+			mEdges.y += 0.01f;
+		break;
+	case KeyEvent::KEY_KP3:
+		// Decrease blue gamma.
+		if( isGammaModeEnabled() && mGamma.b > 0.0f )
+			mGamma.b -= 0.05f;
+		break;
+	case KeyEvent::KEY_KP4:
+		if( isGammaModeEnabled() )
+			return;
+		else if( event.isAccelDown() && mEdges.z > 0.0f )
+			mEdges.z -= 0.01f;
+		else if( !event.isAccelDown() && mEdges.x > 0.0f )
+			mEdges.x -= 0.01f;
+		break;
+	case KeyEvent::KEY_KP6:
+		if( isGammaModeEnabled() )
+			return;
+		else if( event.isAccelDown() && mEdges.z < 1.0f )
+			mEdges.z += 0.01f;
+		else if( !event.isAccelDown() && mEdges.x < 1.0f )
+			mEdges.x += 0.01f;
+		break;
+	case KeyEvent::KEY_KP7:
+		// Increase red gamma.
+		if( isGammaModeEnabled() )
+			mGamma.r += 0.05f;
+		break;
+	case KeyEvent::KEY_KP8:
+		// Increase green gamma.
+		if( isGammaModeEnabled() )
+			mGamma.g += 0.05f;
+		else if( event.isAccelDown() && mEdges.w > 0.0f )
+			mEdges.w -= 0.01f;
+		else if( !event.isAccelDown() && mEdges.y > 0.0f )
+			mEdges.y -= 0.01f;
+		break;
+	case KeyEvent::KEY_KP9:
+		// Increase blue gamma.
+		if( isGammaModeEnabled() )
+			mGamma.b += 0.05f;
+		break;
 			default:
 				return;
 			}
@@ -806,10 +883,8 @@ namespace ph {
 
 				mesh->appendVbo(instanceDataLayout, mInstanceDataVbo);
 
-				try {
-					auto glsl = gl::GlslProg::create(
-						gl::GlslProg::Format()
-						.vertex(
+		auto fmt = gl::GlslProg::Format();
+		fmt.vertex(
 							"#version 150\n"
 							""
 							"uniform mat4 ciViewProjection;\n"
@@ -828,8 +903,9 @@ namespace ph {
 							"	vertTexCoord0 = ciTexCoord0;\n"
 							"	vertColor = ciColor * iColor;\n"
 							"	gl_Position = ciViewProjection * vec4( ciPosition.xy * iPositionScale.z + iPositionScale.xy, ciPosition.zw );\n"
-							"}")
-						.fragment(
+		    "}" );
+
+		fmt.fragment(
 							"#version 150\n"
 							""
 							"in  vec2 vertTexCoord0;\n"
@@ -844,7 +920,10 @@ namespace ph {
 							"	rim += smoothstep( 0.3, 0.4, d ) - smoothstep( 0.5, 0.6, d );\n"
 							"	rim += smoothstep( 0.1, 0.0, d );\n"
 							"	fragColor = mix( vec4( 0.0, 0.0, 0.0, 0.25 ), vertColor, rim );\n"
-							"}"));
+		    "}" );
+
+		try {
+			auto glsl = gl::GlslProg::create( fmt );
 
 					mInstancedBatch = gl::Batch::create(mesh, glsl, { { geom::Attrib::CUSTOM_0, "iPositionScale" }, { geom::Attrib::CUSTOM_1, "iColor" } });
 				}
@@ -860,10 +939,6 @@ namespace ph {
 				for (size_t i = 0; i < mControlPoints.size(); ++i)
 					*ptr++ = mControlPoints[i];
 				mInstanceDataVbo->unmap();
-
-				// render to window
-				//gl::ScopedMatrices matrices;
-				//gl::setMatricesWindow( getWindowSize() );
 
 				// draw instanced
 				mInstancedBatch->drawInstanced((GLsizei)mControlPoints.size());
