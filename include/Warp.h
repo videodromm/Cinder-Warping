@@ -122,6 +122,8 @@ class Warp : public std::enable_shared_from_this<Warp> {
 	unsigned int					getBShaderIndex() { return mBShaderIndex; };
 	std::string						getAShaderFilename() { return mAShaderFilename; };
 	std::string						getBShaderFilename() { return mBShaderFilename; };
+	std::string						getATextureFilename() { return mATextureFilename; };
+	std::string						getBTextureFilename() { return mBTextureFilename; };
 	//float							getABCrossfade() { return mABCrossfade; };
 	ci::Anim<float>					ABCrossfade;	// from 0 A to 1 B can be automated via timeline
 	unsigned int					getMixFboIndex() { return mMixFboIndex; };
@@ -136,6 +138,8 @@ class Warp : public std::enable_shared_from_this<Warp> {
 	void							setBShaderIndex(unsigned int aShaderIndex) { mBShaderIndex = aShaderIndex; };
 	void							setAShaderFilename(std::string aShaderFilename) { mAShaderFilename = aShaderFilename; }; 
 	void							setBShaderFilename(std::string aShaderFilename) { mBShaderFilename = aShaderFilename; };
+	void							setATextureFilename(std::string aTextureFilename) { mATextureFilename = aTextureFilename; };
+	void							setBTextureFilename(std::string aTextureFilename) { mBTextureFilename = aTextureFilename; };
 	//void							setABCrossfade(float aABCrossfade) { mABCrossfade = aABCrossfade; };
 	void							setMixFboIndex(unsigned int aMixFboIndex) { mMixFboIndex = aMixFboIndex; };
 	void							setName(std::string aName) { mName = aName; };
@@ -311,6 +315,8 @@ class Warp : public std::enable_shared_from_this<Warp> {
 	std::string						mName;				// name of the warp
 	std::string						mAShaderFilename;	// file name of the A shader
 	std::string						mBShaderFilename;	// file name of the B shader
+	std::string						mATextureFilename;	// file name of the A Texture
+	std::string						mBTextureFilename;	// file name of the B Texture
 	bool							mActive;			// active
 	bool							mDeleted;			// to be deleted
 	//! Determines the number of horizontal and vertical control points
@@ -571,6 +577,7 @@ class WarpPerspectiveBilinear : public WarpBilinear {
 	void keyDown( ci::app::KeyEvent &event ) override;
 
 	void resize() override;
+	void resize(const ci::ivec2 &size) override;
 
 	//! Set the width and height of the content in pixels.
 	void setSize( int w, int h ) override;

@@ -220,6 +220,14 @@ void WarpPerspectiveBilinear::resize()
 	WarpBilinear::resize();
 }
 
+void WarpPerspectiveBilinear::resize(const ivec2 &size)
+{
+	// make content size compatible with WarpBilinear's mWindowSize
+	mWarp->setSize(size);
+
+	mWarp->resize(size);
+	WarpBilinear::resize(size);
+}
 void WarpPerspectiveBilinear::setSize( int w, int h )
 {
 	// make content size compatible with WarpBilinear's mWindowSize
