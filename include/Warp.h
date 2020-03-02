@@ -116,7 +116,9 @@ class Warp : public std::enable_shared_from_this<Warp> {
 	virtual ci::JsonTree toJson() const;
 	//! from json
 	virtual void fromJson(const ci::JsonTree &json);
-	unsigned int					getAFboIndex() { return mAFboIndex; };
+	unsigned int					getAFboIndex() { 
+		return mAFboIndex; 
+	};
 	unsigned int					getBFboIndex() { return mBFboIndex; };
 	unsigned int					getAShaderIndex() { return mAShaderIndex; };
 	unsigned int					getBShaderIndex() { return mBShaderIndex; };
@@ -307,16 +309,16 @@ class Warp : public std::enable_shared_from_this<Warp> {
 	ci::vec2 mWindowSize;
 	float    mBrightness;
 	unsigned mSelected;
-	unsigned int					mAFboIndex;
-	unsigned int					mAShaderIndex;		// index of the shader used by the fbo A
-	unsigned int					mBFboIndex;			// index of the fbo B
-	unsigned int					mBShaderIndex;		// index of the shader used by the fbo B
-	unsigned int					mMixFboIndex;		// index of the fbo mixing A and B
-	std::string						mName;				// name of the warp
-	std::string						mAShaderFilename;	// file name of the A shader
-	std::string						mBShaderFilename;	// file name of the B shader
-	std::string						mATextureFilename;	// file name of the A Texture
-	std::string						mBTextureFilename;	// file name of the B Texture
+	unsigned int					mAFboIndex = 0;
+	unsigned int					mAShaderIndex = 0;		// index of the shader used by the fbo A
+	unsigned int					mBFboIndex = 0;			// index of the fbo B
+	unsigned int					mBShaderIndex = 0;		// index of the shader used by the fbo B
+	unsigned int					mMixFboIndex = 0;		// index of the fbo mixing A and B
+	std::string						mName = "";				// name of the warp
+	std::string						mAShaderFilename = "";	// file name of the A shader
+	std::string						mBShaderFilename = "";	// file name of the B shader
+	std::string						mATextureFilename = "";	// file name of the A Texture
+	std::string						mBTextureFilename = "";	// file name of the B Texture
 	bool							mActive;			// active
 	bool							mDeleted;			// to be deleted
 	//! Determines the number of horizontal and vertical control points
