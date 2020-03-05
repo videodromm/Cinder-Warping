@@ -839,6 +839,7 @@ std::atomic<bool> Warp::sIsGammaMode{ false };
 		void Warp::resize()
 		{
 			// 20200305 resize(getWindowSize());
+			mIsDirty = true;
 		}
 
 		void Warp::resize(const ivec2 &size)

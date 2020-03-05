@@ -216,8 +216,8 @@ void WarpPerspectiveBilinear::resize()
 	// 20200305 mWarp->setSize( getWindowSize() );
 
 	//
-	// 20200305 mWarp->resize();
-	// 20200305 WarpBilinear::resize();
+	mWarp->resize();
+	WarpBilinear::resize();
 }
 
 void WarpPerspectiveBilinear::resize(const ivec2 &size)
