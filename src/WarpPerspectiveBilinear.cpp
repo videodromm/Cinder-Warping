@@ -213,11 +213,11 @@ void WarpPerspectiveBilinear::keyDown( KeyEvent &event )
 void WarpPerspectiveBilinear::resize()
 {
 	// make content size compatible with WarpBilinear's mWindowSize
-	mWarp->setSize( getWindowSize() );
+	// 20200305 mWarp->setSize( getWindowSize() );
 
 	//
-	mWarp->resize();
-	WarpBilinear::resize();
+	// 20200305 mWarp->resize();
+	// 20200305 WarpBilinear::resize();
 }
 
 void WarpPerspectiveBilinear::resize(const ivec2 &size)

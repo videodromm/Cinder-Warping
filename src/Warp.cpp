@@ -38,8 +38,8 @@ std::atomic<bool> Warp::sIsGammaMode{ false };
 		Warp::Warp(WarpType type)
 			: mType(type)
 			, mIsDirty(true)
-			, mWidth(640)
-			, mHeight(480)
+			, mWidth(1280)
+			, mHeight(720)
 			, mBrightness(1.0f)
 			, mSelected(-1)
 			, mControlsX(2)
@@ -838,7 +838,7 @@ std::atomic<bool> Warp::sIsGammaMode{ false };
 
 		void Warp::resize()
 		{
-			resize(getWindowSize());
+			// 20200305 resize(getWindowSize());
 		}
 
 		void Warp::resize(const ivec2 &size)
