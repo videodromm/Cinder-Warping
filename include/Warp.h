@@ -27,6 +27,8 @@
 #include "cinder/Matrix.h"
 #include "cinder/Rect.h"
 #include "cinder/Vector.h"
+//!  json
+#include "cinder/JsonTree.h"
 #include "cinder/Json.h"
 #include "cinder/Log.h"
 #include "cinder/Tween.h"
