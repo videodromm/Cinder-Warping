@@ -118,8 +118,11 @@ class Warp : public std::enable_shared_from_this<Warp> {
 	virtual ci::JsonTree toJson() const;
 	//! from json
 	virtual void fromJson(const ci::JsonTree &json);
-	unsigned int					getAFboIndex() { 
-		return mAFboIndex; 
+	// sentinel for getAFboIndex()/setAFboIndex(): "no specific fbo chosen - show the full
+	// weighted composite instead of one fbo's raw output" (see VDSession::renderWarpsToFbo())
+	static const unsigned int		NO_FBO_INDEX = (unsigned int)-1;
+	unsigned int					getAFboIndex() {
+		return mAFboIndex;
 	};
 	unsigned int					getBFboIndex() { return mBFboIndex; };
 	unsigned int					getAShaderIndex() { return mAShaderIndex; };
@@ -311,7 +314,10 @@ class Warp : public std::enable_shared_from_this<Warp> {
 	ci::vec2 mWindowSize;
 	float    mBrightness;
 	unsigned mSelected;
-	unsigned int					mAFboIndex = 0;
+	// defaults to "no specific fbo" (show the full composite) rather than a real index - a fresh
+	// warp with no explicit choice should show the same blended image every other warp defaults
+	// to, not silently pick out fbo 0
+	unsigned int					mAFboIndex = NO_FBO_INDEX;
 	unsigned int					mAShaderIndex = 0;		// index of the shader used by the fbo A
 	unsigned int					mBFboIndex = 0;			// index of the fbo B
 	unsigned int					mBShaderIndex = 0;		// index of the shader used by the fbo B
