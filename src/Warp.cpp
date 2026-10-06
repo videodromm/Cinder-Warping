@@ -363,27 +363,20 @@ std::atomic<bool> Warp::sIsGammaMode{ false };
 		{
 			unsigned index;
 
-			// mouse events arrive in real window pixel space (Y-down, origin top-left), but the
-			// content this class renders (via gl::setMatricesWindow(), see WarpBilinear::draw())
-			// is later displayed through a downstream shader's unconditional vertical flip
-			// (VDR's post.glsl: "uv.y = 1.0 - uv.y", applied whenever iFlipV is left at its
-			// default) - so a control point's visible on-screen Y is the vertical mirror of the Y
-			// stored/compared here. Flipping the incoming position once, right here, fixes
-			// "warp controls are inverted vertically using the mouse" - the mouse math itself was
-			// already entirely self-consistent (mouseDown()/mouseDrag() agree with this
-			// function), which is exactly why this was easy to miss: nothing here was wrong in
-			// isolation, only relative to a downstream flip this class has no other way to know
-			// about.
-			vec2 flippedPos(pos.x, mWindowSize.y - pos.y);
+			// mouse position used as is: warps only reach the screen upright now (Warp display
+			// mode draws the warp fbo with gl::draw, VDOutputWindow draws it the same way). The
+			// 2026-09-17 vertical flip here compensated post.glsl's flip back when Post/Fx sampled the
+			// warps; they sample the mixette since, and the flip inverted dragging (2026-10-06).
+			vec2 mousePos(pos.x, pos.y);
 
 			// store mouse position for later use in e.g. WarpBilinear::keyDown().
-			mMouse = flippedPos;
+			mMouse = mousePos;
 
 			// find closest control point
 			float dist = 10.0e6f;
 
 			for (unsigned i = 0; i < mPoints.size(); i++) {
-				float d = glm::distance(flippedPos, getControlPoint(i) * mWindowSize);
+				float d = glm::distance(mousePos, getControlPoint(i) * mWindowSize);
 
 				if (d < dist) {
 					dist = d;
@@ -679,9 +672,9 @@ std::atomic<bool> Warp::sIsGammaMode{ false };
 
 			// calculate offset by converting control point from normalized to standard screen space
 			ivec2 p = (getControlPoint(mSelected) * mWindowSize);
-			// see findControlPoint()'s comment - the same downstream display flip applies here
-			vec2 flippedPos(event.getPos().x, mWindowSize.y - event.getPos().y);
-			mOffset = flippedPos - vec2(p);
+			// see findControlPoint()'s comment: no vertical flip
+			vec2 mousePos(event.getPos());
+			mOffset = mousePos - vec2(p);
 
 			event.setHandled(true);
 		}
@@ -693,8 +686,8 @@ std::atomic<bool> Warp::sIsGammaMode{ false };
 	if( mSelected >= mPoints.size() )
 		return;
 
-			// see findControlPoint()'s comment - the same downstream display flip applies here
-			vec2 m(event.getPos().x, mWindowSize.y - event.getPos().y);
+			// see findControlPoint()'s comment: no vertical flip
+			vec2 m(event.getPos());
 			vec2 p(m.x - mOffset.x, m.y - mOffset.y);
 
 			// set control point in normalized screen space
