@@ -92,6 +92,32 @@ void WarpBilinear::fromJson(const JsonTree &json)
 	mIsLinear = (json.hasChild("linear")) ? json.getValueForKey<bool>("linear") : false;
 	mIsAdaptive = (json.hasChild("adaptive")) ? json.getValueForKey<bool>("adaptive") : false; 
 }
+Warp::EditState WarpBilinear::getEditState() const
+{
+	EditState s = Warp::getEditState();
+	s.resolution = mResolution;
+	s.linear = mIsLinear;
+	s.adaptive = mIsAdaptive;
+	return s;
+}
+
+void WarpBilinear::setEditState( const EditState &state )
+{
+	mResolution = state.resolution;
+	mIsLinear = state.linear;
+	mIsAdaptive = state.adaptive;
+	Warp::setEditState( state ); // points, grid, mIsDirty: the mesh is rebuilt on the next draw
+}
+
+void WarpBilinear::resetLayout()
+{
+	// a new WarpBilinear's values (constructor)
+	mResolution = 16;
+	mIsLinear = false;
+	mIsAdaptive = true;
+	Warp::resetLayout();
+}
+
 void WarpBilinear::reset()
 {
 	mPoints.clear();

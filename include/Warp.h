@@ -121,6 +121,32 @@ class Warp : public std::enable_shared_from_this<Warp> {
 	// sentinel for getAFboIndex()/setAFboIndex(): "no specific fbo chosen - show the full
 	// weighted composite instead of one fbo's raw output" (see VDSession::renderWarpsToFbo())
 	static const unsigned int		NO_FBO_INDEX = (unsigned int)-1;
+
+	//! Undo (2026-11-12): what editing changes (control points, grid, mesh options, the perspective corners).
+	//! Snapshot directly rather than through toJson()/fromJson(), which write PERSPECTIVE_BILINEAR's "warp" key twice.
+	struct EditState {
+		std::vector<ci::vec2>	points;
+		int						controlsX = 2;
+		int						controlsY = 2;
+		int						resolution = 16;
+		bool					linear = false;
+		bool					adaptive = true;
+		std::vector<ci::vec2>	corners;
+		bool operator==( const EditState &o ) const {
+			return points == o.points && controlsX == o.controlsX && controlsY == o.controlsY && resolution == o.resolution
+				&& linear == o.linear && adaptive == o.adaptive && corners == o.corners;
+		}
+		bool operator!=( const EditState &o ) const { return !( *this == o ); }
+	};
+	virtual EditState getEditState() const;
+	virtual void setEditState( const EditState &state );
+	//! Back to a new warp's layout: 2x2 grid, points on the corners, flat perspective. Not recorded: see resetLayout(WarpList&, ...).
+	virtual void resetLayout();
+	//! Resets one warp of the list, as an undoable step (the Warps panel's Reset button).
+	static void resetLayout( WarpList &warps, size_t index );
+	//! Restores the state before the last recorded edit (Ctrl+Z / Cmd+Z in edit mode). False if there's nothing to undo.
+	static bool undo();
+	static size_t getUndoCount();
 	unsigned int					getAFboIndex() {
 		return mAFboIndex;
 	};
@@ -327,8 +353,11 @@ class Warp : public std::enable_shared_from_this<Warp> {
 	std::string						mBShaderFilename = "";	// file name of the B shader
 	std::string						mATextureFilename = "";	// file name of the A Texture
 	std::string						mBTextureFilename = "";	// file name of the B Texture
-	bool							mActive;			// active
-	bool							mDeleted;			// to be deleted
+	// 2026-11-12: initialized here. Only fromJson() set them, so a warp loaded from warps.xml or made by Warp++ had
+	// whatever was in memory: mActive false meant selectClosestControlPoint() skipped it and no control point was
+	// drawn or editable (W showed the grid only)
+	bool							mActive = true;		// active
+	bool							mDeleted = false;	// to be deleted
 	//! Determines the number of horizontal and vertical control points
 	int mControlsX;
 	int mControlsY;
@@ -428,6 +457,10 @@ class WarpBilinear : public Warp {
 
 	//! Reset control points to undistorted image.
 	virtual void reset() override;
+	//! undo / reset layout: Warp's state + resolution, linear, adaptive
+	virtual EditState getEditState() const override;
+	virtual void setEditState( const EditState &state ) override;
+	virtual void resetLayout() override;
 	//! Setup the warp before drawing its contents.
 	virtual void begin() override;
 	//! Restore the warp after drawing.
@@ -579,6 +612,11 @@ class WarpPerspectiveBilinear : public WarpBilinear {
 	virtual ci::JsonTree toJson() const override;
 	//! from json
 	virtual void fromJson(const ci::JsonTree &json) override;
+
+	//! undo / reset layout: WarpBilinear's state + the perspective warp's 4 corners
+	EditState getEditState() const override;
+	void setEditState( const EditState &state ) override;
+	void resetLayout() override;
 
 	void mouseMove( ci::app::MouseEvent &event ) override;
 	void mouseDown( ci::app::MouseEvent &event ) override;

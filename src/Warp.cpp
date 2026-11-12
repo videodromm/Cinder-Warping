@@ -594,10 +594,104 @@ std::atomic<bool> Warp::sIsGammaMode{ false };
 			return false;
 		}
 
+		// --- undo (2026-11-12) ---------------------------------------------------------------------------------
+		// One step = the warps an edit changed, with their state before it. A drag is one step (snapshot at mouse down,
+		// recorded at mouse up if something moved); each key that edits (arrows, F1-F12, m...) is one step.
+		namespace {
+			typedef std::vector<std::pair<std::weak_ptr<Warp>, Warp::EditState>> UndoStep;
+			std::vector<UndoStep>					sUndoSteps;
+			const size_t							MAX_UNDO_STEPS = 200;
+			// mouse down -> mouse up: the warps and their state when the drag started
+			std::vector<std::weak_ptr<Warp>>		sDragWarps;
+			std::vector<Warp::EditState>			sDragBefore;
+
+			void captureStates(const WarpList &warps, std::vector<std::weak_ptr<Warp>> &outWarps, std::vector<Warp::EditState> &outStates)
+			{
+				outWarps.clear();
+				outStates.clear();
+				for (const auto &w : warps) {
+					outWarps.push_back(w);
+					outStates.push_back(w->getEditState());
+				}
+			}
+			// pushes one undo step with the warps whose state differs from before
+			void recordChanges(const std::vector<std::weak_ptr<Warp>> &warps, const std::vector<Warp::EditState> &before)
+			{
+				UndoStep step;
+				for (size_t i = 0; i < warps.size() && i < before.size(); i++) {
+					auto w = warps[i].lock();
+					if (w && w->getEditState() != before[i]) step.push_back({ warps[i], before[i] });
+				}
+				if (step.empty()) return;
+				sUndoSteps.push_back(step);
+				if (sUndoSteps.size() > MAX_UNDO_STEPS) sUndoSteps.erase(sUndoSteps.begin());
+			}
+		}
+
+		Warp::EditState Warp::getEditState() const
+		{
+			EditState s;
+			s.points = mPoints;
+			s.controlsX = mControlsX;
+			s.controlsY = mControlsY;
+			return s;
+		}
+
+		void Warp::setEditState(const EditState &state)
+		{
+			mPoints = state.points;
+			mControlsX = state.controlsX;
+			mControlsY = state.controlsY;
+			if (mSelected >= mPoints.size()) deselectControlPoint();
+			mIsDirty = true;
+		}
+
+		void Warp::resetLayout()
+		{
+			mControlsX = 2;
+			mControlsY = 2;
+			reset();
+		}
+
+		void Warp::resetLayout(WarpList &warps, size_t index)
+		{
+			if (index >= warps.size()) return;
+			std::vector<std::weak_ptr<Warp>> w = { warps[index] };
+			std::vector<EditState> before = { warps[index]->getEditState() };
+			warps[index]->resetLayout();
+			recordChanges(w, before);
+		}
+
+		bool Warp::undo()
+		{
+			while (!sUndoSteps.empty()) {
+				UndoStep step = sUndoSteps.back();
+				sUndoSteps.pop_back();
+				bool restored = false;
+				for (auto &entry : step) {
+					if (auto w = entry.first.lock()) {
+						w->setEditState(entry.second);
+						restored = true;
+					}
+				}
+				// a step whose warps were all removed since: try the one before
+				if (restored) return true;
+			}
+			return false;
+		}
+
+		size_t Warp::getUndoCount()
+		{
+			return sUndoSteps.size();
+		}
+
 		bool Warp::handleMouseDown(WarpList &warps, MouseEvent &event)
 		{
 			// find and select closest control point
 			selectClosestControlPoint(warps, event.getPos());
+
+			// undo: the state when a drag starts (recorded at mouse up if it changed)
+			if (sIsEditMode) captureStates(warps, sDragWarps, sDragBefore);
 
 			for (WarpReverseIter itr = warps.rbegin(); itr != warps.rend() && !event.isHandled(); ++itr)
 				(*itr)->mouseDown(event);
@@ -615,13 +709,33 @@ std::atomic<bool> Warp::sIsGammaMode{ false };
 
 		bool Warp::handleMouseUp(WarpList &warps, MouseEvent &event)
 		{
+			// undo: one step for the whole drag
+			if (!sDragWarps.empty()) {
+				recordChanges(sDragWarps, sDragBefore);
+				sDragWarps.clear();
+				sDragBefore.clear();
+			}
 			return false;
 		}
 
 		bool Warp::handleKeyDown(WarpList &warps, KeyEvent &event)
 		{
+			// Ctrl+Z (Cmd+Z on the Mac) in edit mode: undo the last point move / grid change / reset
+			if (sIsEditMode && event.getCode() == KeyEvent::KEY_z && (event.isControlDown() || event.isMetaDown())) {
+				undo();
+				event.setHandled(true);
+				return true;
+			}
+
+			// undo: each key that changes a warp is one step
+			std::vector<std::weak_ptr<Warp>> keyWarps;
+			std::vector<EditState> keyBefore;
+			if (sIsEditMode) captureStates(warps, keyWarps, keyBefore);
+
 			for (WarpReverseIter itr = warps.rbegin(); itr != warps.rend() && !event.isHandled(); ++itr)
 				(*itr)->keyDown(event);
+
+			if (sIsEditMode) recordChanges(keyWarps, keyBefore);
 
 			switch (event.getCode()) {
 			case KeyEvent::KEY_UP:

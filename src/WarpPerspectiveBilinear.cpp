@@ -112,6 +112,27 @@ void WarpPerspectiveBilinear::fromJson(const JsonTree &json)
 		}
 	}
 }
+Warp::EditState WarpPerspectiveBilinear::getEditState() const
+{
+	EditState s = WarpBilinear::getEditState();
+	for( unsigned i = 0; i < 4; ++i )
+		s.corners.push_back( mWarp->getControlPoint( i ) );
+	return s;
+}
+
+void WarpPerspectiveBilinear::setEditState( const EditState &state )
+{
+	WarpBilinear::setEditState( state );
+	for( unsigned i = 0; i < 4 && i < state.corners.size(); ++i )
+		mWarp->setControlPoint( i, state.corners[i] );
+}
+
+void WarpPerspectiveBilinear::resetLayout()
+{
+	WarpBilinear::resetLayout();
+	mWarp->reset();
+}
+
 void WarpPerspectiveBilinear::draw( bool controls )
 {
 	// apply perspective transform
